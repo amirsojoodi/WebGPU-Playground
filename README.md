@@ -1,92 +1,174 @@
 # WebGPU-Playground
 
+## Core concepts
 
+1. `Adapter`
+   - An adapter identifies an implementation of WebGPU on the system:
+   - Both an instance of compute/rendering functionality on the platform underlying a browser,
+   - and an instance of a browser's implementation of WebGPU on top of that functionality.
+2. `GPUDevice`
+   - `await adapter.requestDevice(options);`
+   - Primary interface for the API
+   - Creates resources like Textures, Buffers, Pipelines, etc.
+   - Has a `GPUQueue` for executing commands
+3. `GPUAdapter.features`
+   - Adapter lists which ones are available.
+   - Must be specified when the requesting a Device or they won't be active.
+4. `GPUAdapter.limits`
+   - A sample output can be seen [here](./GTX1060-GPUAdapter.limits.out).
+5. Adapter Info - `adapter.requestAdapterInfo()`
+   - Information including *vendor, architecture, device, driver, and description*
 
-## Getting started
+## Initialization
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+```js
+const adapter = await navigator.gpu.requestAdapter();
+const device = await adapter.requestDevice();
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
+const context = canvas.getContext('webgpu');
+context.configure({
+   device,
+   format: 'bgra8unorm',
+});
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/amirsojoodi/webgpu-playground.git
-git branch -M main
-git push -uf origin main
+
+## Creating Buffers
+
+```js
+const vertexData = new Float32Array([
+   0, 1, 1,
+   -1, -1, 1,
+   1, -1, 1
+]);
+
+const vertexBuffer = device.createBuffer({
+   size: vertexData.byteLength,
+   usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+});
+device.queue.writeBuffer(vertexBuffer, 0, vertexData);
 ```
 
-## Integrate with your tools
+## Pipelines
 
-- [ ] [Set up project integrations](https://gitlab.com/amirsojoodi/webgpu-playground/-/settings/integrations)
+- Comes in `GPURenderPipeline` and `GPUComputePipeline`
+- Immutable after creation
 
-## Collaborate with your team
+```js
+const pipeline = device.createComputePipeline({
+  layout: pipelineLayout,
+  compute: {
+    module: shaderModule,
+    entryPoint: 'computeMain',
+  }
+});
+```
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+## Queue
 
-## Test and Deploy
+- Device has a default `GPUQueue`, which is the only one available now.
+- Used to submit commands to the GPU.
+- Also has handy helper functions for writing to buffers and textures.
+- These are the easiest ways to set the contents of these resources.
 
-Use the built-in continuous integration in GitLab.
+```js
+device.queue.writeBuffer(buffer, 0, typedArray);
+device.queue.writeTexture({ texture: dstTexture },
+                          typedArray,
+                          { bytesPerRow: 256 },
+                          { width: 64, height: 64 });
+```
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+## Recording GPU commands
 
-***
+- Create a `GPUCommandEncoder` from the device
+- Perform copies between buffers/textures
+- Begin render or compute passes
+- Creates a `GPUCommandBuffer` when finished.
+- Command buffers don't do anything until submitted to the queue.
+- Cannot reuse a command buffer after it's been submitted.
 
-# Editing this README
+```js
+const commandEncoder = device.createCommandEncoder();
+commandEncoder.copyBufferToBuffer(bufferA, 0,
+                                  bufferB, 0, 256);
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
+const passEncoder = commandEncoder.beginComputePass();
+passEncoder.setPipeline(pipeline);
+passEncoder.setBindGroup(0, bindGroup);
+passEncoder.dispatchWorkgroups(128);
+passEncoder.end();
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+const commandBuffer = commandEncoder.finish();
+device.queue.submit([commandBuffer]);
+```
 
-## Name
-Choose a self-explaining name for your project.
+## Debugging WebGPU code
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+### Label Usage
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+- Every single object in WebGPU can be given a label, and those labels will be use when reporting error messages.
+- Labels have no impact on performance, so there is no reason not to use them!
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+```js
+const vertexBuffer = device.createBuffer({
+  label: 'Player vertices',
+  size: vertexData.byteLength,
+  usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+});
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+const passEncoder = commandEncoder.beginRenderPass({
+  label: 'Primary render pass',
+  colorAttachments: [{
+    view: context.getCurrentTexture().createView(),
+    loadOp: 'clear',
+    clearValue: [0.0, 0.0, 0.0, 1.0],
+    storeOp: 'store',
+  }]
+});
+```
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+### Debug group usage
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+- Debug groups are great for telling *where* in the code an error took place.
+- They give a personalized stack with for every error that occurs inside them.
+- Just like labels, they show up in the native tools as well.
+- Plus they're lightweight, so there is no need to worry about stripping them out of the release code.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+```js
+const commandEncoder = device.createCommandEncoder();
+commandEncoder.pushDebugGroup('Main Render Loop');
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+  commandEncoder.pushDebugGroup('Render Scene');
+    renderGameScene(commandEncoder);
+  commandEncoder.popDebugGroup();
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+  commandEncoder.pushDebugGroup('Render UI');
+    renderGameUI(commandEncoder);
+  commandEncoder.popDebugGroup();
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+commandEncoder.popDebugGroup();
+device.queue.submit([commandEncoder.finish()]);
+```
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+## Best practices
 
-## License
-For open source projects, say how it is licensed.
+1. More pipelines, more state switching, less performance
+2. Create pipelines in advance, and don't use them immediately after creation.
+Or use the async version. The promise resolves when the pipleline is ready to use without any stalling.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+```js
+device.createComputePipelineAsync({
+ compute: {
+   module: shaderModule,
+   entryPoint: 'computeMain'
+ }
+}).then((pipeline) => {
+  const commandEncoder = device.createCommandEncoder();
+  const passEncoder = commandEncoder.beginComputePass();
+  passEncoder.setPipeline(pipeline);
+  passEncoder.setBindGroup(0, bindGroup);
+  passEncoder.dispatchWorkgroups(128);
+  passEncoder.end();
+  device.queue.submit([commandEncoder.finish()]);
+});
+```
