@@ -141,4 +141,7 @@
   await gpuReadBuffer.mapAsync(GPUMapMode.READ);
   const arrayBuffer = gpuReadBuffer.getMappedRange();
   console.log(new Float32Array(arrayBuffer));
+
+  // Freeing buffer
+  gpuReadBuffer.unmap();
 })();
