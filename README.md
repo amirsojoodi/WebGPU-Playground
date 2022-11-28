@@ -1,5 +1,13 @@
 # WebGPU-Playground
 
+## Timelines
+
+A computer system with a user agent at the front-end and GPU at the back-end has components working on different timelines in parallel:
+
+1. **Content timeline**: Associated with the execution of the Web script. It includes calling all methods described by this specification.
+2. **Device timeline**: Associated with the GPU device operations that are issued by the user agent. It includes creation of adapters, devices, and GPU resources and state objects, which are typically synchronous operations from the point of view of the user agent part that controls the GPU, but can live in a separate OS process.
+3. **Queue timeline**: Associated with the execution of operations on the compute units of the GPU. It includes actual draw, copy, and compute jobs that run on the GPU.
+
 ## Core concepts
 
 1. `Adapter`
@@ -48,7 +56,13 @@ const vertexBuffer = device.createBuffer({
 device.queue.writeBuffer(vertexBuffer, 0, vertexData);
 ```
 
+## Buffer Mapping
+
+An application can request to map a `GPUBuffer` so that they can access its content via `ArrayBuffers` that represent part of the `GPUBuffer`'s allocations. Mapping a GPUBuffer is requested asynchronously with `mapAsync()` so that the user agent can ensure the GPU finished using the `GPUBuffer` before the application can access its content. A mapped `GPUBuffer` cannot be used by the GPU and must be unmapped using `unmap()` before work using it can be submitted to the Queue timeline.
+
 ## Pipelines
+
+Structurally, the pipeline consists of a sequence of programmable stages (shaders) and fixed-function states, such as the blending modes.
 
 - Comes in `GPURenderPipeline` and `GPUComputePipeline`
 - Immutable after creation
@@ -80,12 +94,14 @@ device.queue.writeTexture({ texture: dstTexture },
 
 ## Recording GPU commands
 
+Command buffers are pre-recorded lists of GPU commands that can be submitted to a `GPUQueue` for execution. Each GPU command represents a task to be performed on the GPU, such as setting state, drawing, copying resources, etc.
+
 - Create a `GPUCommandEncoder` from the device
 - Perform copies between buffers/textures
 - Begin render or compute passes
 - Creates a `GPUCommandBuffer` when finished.
 - Command buffers don't do anything until submitted to the queue.
-- Cannot reuse a command buffer after it's been submitted.
+- A `GPUCommandBuffer` can only be submitted once, at which point it becomes invalid. To reuse rendering commands across multiple submissions, use `GPURenderBundle`.
 
 ```js
 const commandEncoder = device.createCommandEncoder();
@@ -148,6 +164,24 @@ commandEncoder.pushDebugGroup('Main Render Loop');
 
 commandEncoder.popDebugGroup();
 device.queue.submit([commandEncoder.finish()]);
+```
+
+Using error scopes to capture validation errors from a GPUDevice operation that may fail:
+
+```js
+gpuDevice.pushErrorScope('validation');
+
+let sampler = gpuDevice.createSampler({
+    maxAnisotropy: 0, // Invalid, maxAnisotropy must be at least 1.
+});
+
+gpuDevice.popErrorScope().then((error) => {
+    if (error) {
+        // There was an error creating the sampler, so discard it.
+        sampler = null;
+        console.error(`An error occured while creating sampler: ${error.message}`);
+    }
+});
 ```
 
 ## Best practices
