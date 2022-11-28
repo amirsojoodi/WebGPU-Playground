@@ -58,6 +58,12 @@ device.queue.writeBuffer(vertexBuffer, 0, vertexData);
 
 ## Buffer Mapping
 
+|                             | Regular ArrayBuffer | Shared Memory | Mappable GPU buffer | Non-mappable GPU buffer (or texture) |
+| :-------------------------: | :-----------------: | :-----------: | :-----------------: | :----------------------------------: |
+| CPU, in the content process |     **Visible**     |  **Visible**  |     Not visible     |             Not visible              |
+|   CPU, in the GPU process   |     Not visible     |  **Visible**  |     **Visible**     |             Not visible              |
+|             GPU             |     Not visible     |  Not visible  |     **Visible**     |             **Visible**              |
+
 An application can request to map a `GPUBuffer` so that they can access its content via `ArrayBuffers` that represent part of the `GPUBuffer`'s allocations. Mapping a GPUBuffer is requested asynchronously with `mapAsync()` so that the user agent can ensure the GPU finished using the `GPUBuffer` before the application can access its content. A mapped `GPUBuffer` cannot be used by the GPU and must be unmapped using `unmap()` before work using it can be submitted to the Queue timeline.
 
 ## Pipelines
@@ -116,6 +122,15 @@ passEncoder.end();
 
 const commandBuffer = commandEncoder.finish();
 device.queue.submit([commandBuffer]);
+```
+
+## Workgroup
+
+```js
+dispatch(group_size, group_count)
+// group_size => workgroup_size(Sx, Sy, Sz) (similar to thread block)
+// group_count => dispatchWorkgroups(Nx, Ny, Nz) (similar to grid)
+// Total tasks => (Nx * Ny * Nz * Sx * Sy * Sz)
 ```
 
 ## Debugging WebGPU code
@@ -209,4 +224,8 @@ device.createComputePipelineAsync({
 
 ## References
 
-- [WebGPU on W3C](https://gpuweb.github.io/gpuweb/)
+- [WebGPU spec on W3C](https://gpuweb.github.io/gpuweb/)
+- [WebGPU compute example](https://web.dev/gpu-compute/)
+- [WebGPU on Chrome](https://developer.chrome.com/docs/web-platform/webgpu/)
+- [A youtube example](https://youtu.be/7fiCsG6IILs)
+- [WebGPU Explainer](https://gpuweb.github.io/gpuweb/explainer/)
