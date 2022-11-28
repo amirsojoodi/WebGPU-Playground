@@ -38,6 +38,5 @@ ts-node
 
 # Build Files
 temp
-*.js
 *.map
 !webpack.*
