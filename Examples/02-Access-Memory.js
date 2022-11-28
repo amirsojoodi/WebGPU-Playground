@@ -61,8 +61,12 @@
   device.queue.submit([copyCommands]);
 
   // Read buffer.
+  console.time("mapAsync");
   await gpuReadBuffer.mapAsync(GPUMapMode.READ);
+  console.timeEnd("mapAsync");
   const copyArrayBuffer = gpuReadBuffer.getMappedRange();
 
   console.log(new Uint8Array(copyArrayBuffer));
+
+  gpuReadBuffer.unmap();
 })();
