@@ -229,3 +229,7 @@ device.createComputePipelineAsync({
 - [WebGPU on Chrome](https://developer.chrome.com/docs/web-platform/webgpu/)
 - [A youtube example](https://youtu.be/7fiCsG6IILs)
 - [WebGPU Explainer](https://gpuweb.github.io/gpuweb/explainer/)
+- [WebGPU in Rust](https://github.com/gfx-rs/wgpu/)
+- [WebGPU Native](https://github.com/gfx-rs/wgpu-native)
+- [WebGPU Wiki](https://github.com/gfx-rs/wgpu/wiki)
+- [Khronos WebCL](https://www.khronos.org/webcl/)
