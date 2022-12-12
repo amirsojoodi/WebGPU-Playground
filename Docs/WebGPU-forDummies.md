@@ -233,3 +233,5 @@ device.createComputePipelineAsync({
 - [WebGPU Native](https://github.com/gfx-rs/wgpu-native)
 - [WebGPU Wiki](https://github.com/gfx-rs/wgpu/wiki)
 - [Khronos WebCL](https://www.khronos.org/webcl/)
+- [Debugging wgpu Applications](https://github.com/gfx-rs/wgpu/wiki/Debugging-wgpu-Applications)
+- [Other resources](https://github.com/gfx-rs/wgpu/wiki/Users)
