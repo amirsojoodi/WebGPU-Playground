@@ -1,5 +1,7 @@
 # Intro to WebGPU
 
+Most of the following document is written based on https://www.w3.org/TR/webgpu/ (the december 2022 draft).
+
 ## Timelines
 
 A computer system with a user agent at the front-end and GPU at the back-end has components working on different timelines in parallel:
@@ -226,12 +228,15 @@ device.createComputePipelineAsync({
 
 - [WebGPU spec on W3C](https://gpuweb.github.io/gpuweb/)
 - [WebGPU compute example](https://web.dev/gpu-compute/)
-- [WebGPU on Chrome](https://developer.chrome.com/docs/web-platform/webgpu/)
+- [A good Tutorial](https://surma.dev/things/webgpu/)
 - [A youtube example](https://youtu.be/7fiCsG6IILs)
+- [WebGPU on Chrome](https://developer.chrome.com/docs/web-platform/webgpu/)
 - [WebGPU Explainer](https://gpuweb.github.io/gpuweb/explainer/)
 - [WebGPU in Rust](https://github.com/gfx-rs/wgpu/)
+- [WebGPU for TypeScript](https://github.com/gpuweb/types)
 - [WebGPU Native](https://github.com/gfx-rs/wgpu-native)
 - [WebGPU Wiki](https://github.com/gfx-rs/wgpu/wiki)
 - [Khronos WebCL](https://www.khronos.org/webcl/)
 - [Debugging wgpu Applications](https://github.com/gfx-rs/wgpu/wiki/Debugging-wgpu-Applications)
 - [Other resources](https://github.com/gfx-rs/wgpu/wiki/Users)
+- [GPU.js](https://github.com/gpujs/gpu.js)
