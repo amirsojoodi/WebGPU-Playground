@@ -125,7 +125,8 @@
           for (var i = 0u; i < u32(firstMatrix.size.y); i = i + 1u) {
             let a = i + resultCell.x * u32(firstMatrix.size.y);
             let b = resultCell.y + i * u32(secondMatrix.size.y);
-            result = addCC(result, mulCC(firstMatrix.numbers[a], secondMatrix.numbers[b]));
+            // result = addCC(result, mulCC(firstMatrix.numbers[a], secondMatrix.numbers[b]));
+            result = result + mulCC(firstMatrix.numbers[a], secondMatrix.numbers[b]);
             
             if(i % 2 == 0) {
               continue;
