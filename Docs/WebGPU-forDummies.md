@@ -224,6 +224,26 @@ device.createComputePipelineAsync({
 });
 ```
 
+## BindGroup Layout auto
+
+If you use the `auto` layout for the compute pipeline, it will only contain bindings for variables that are directly or transitively referenced by the shader's entry point function. If you don't reference the defined vars, then it won't be added to the automatically generated bind group layout.
+One quick way to reference the vars inside the kernel is to add these lines to the top of your entry point:
+
+```
+@group(0) @binding(0) var<storage, read_write> results : array<i32>;
+@group(0) @binding(1) var<storage, read_write> count : atomic<u32>;
+
+@compute @workgroup_size(16, 16)
+fn main(@builtin(workgroup_id) groupId : vec3<u32>,
+  @builtin(local_invocation_id) threadId: vec3<u32>,
+  @builtin(global_invocation_id) globalId : vec3<u32>) {
+
+_ = &results;
+_ = &count;
+
+// ...
+```
+
 ## References
 
 - [WebGPU spec on W3C](https://gpuweb.github.io/gpuweb/)
