@@ -68,6 +68,9 @@ device.queue.writeBuffer(vertexBuffer, 0, vertexData);
 
 An application can request to map a `GPUBuffer` so that they can access its content via `ArrayBuffers` that represent part of the `GPUBuffer`'s allocations. Mapping a GPUBuffer is requested asynchronously with `mapAsync()` so that the user agent can ensure the GPU finished using the `GPUBuffer` before the application can access its content. A mapped `GPUBuffer` cannot be used by the GPU and must be unmapped using `unmap()` before work using it can be submitted to the Queue timeline.
 
+**Important** point:
+`GPUBuffer` mapping is done as an ownership transfer between the CPU and the GPU. At each instant, only one of the two can access the buffer, so no race is possible. In summary, GPU cannot access mapped buffers, and CPU cannot access unmapped ones.
+
 ## Pipelines
 
 Structurally, the pipeline consists of a sequence of programmable stages (shaders) and fixed-function states, such as the blending modes.
