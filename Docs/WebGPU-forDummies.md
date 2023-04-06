@@ -252,6 +252,7 @@ _ = &count;
 - [A youtube example](https://youtu.be/7fiCsG6IILs)
 - [WebGPU on Chrome](https://developer.chrome.com/docs/web-platform/webgpu/)
 - [WebGPU Explainer](https://gpuweb.github.io/gpuweb/explainer/)
+- [WebGPU Compute](https://developer.chrome.com/articles/gpu-compute/)
 - [WebGPU in Rust](https://github.com/gfx-rs/wgpu/)
 - [WebGPU for TypeScript](https://github.com/gpuweb/types)
 - [WebGPU Native](https://github.com/gfx-rs/wgpu-native)

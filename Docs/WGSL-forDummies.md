@@ -128,3 +128,4 @@ const shaderModule = device.createShaderModule({
 ## References
 
 - [WGSL on W3C](https://www.w3.org/TR/WGSL/)
+- [Shader Playground](https://shader-playground.timjones.io/)
