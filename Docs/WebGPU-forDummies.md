@@ -68,6 +68,9 @@ device.queue.writeBuffer(vertexBuffer, 0, vertexData);
 
 An application can request to map a `GPUBuffer` so that they can access its content via `ArrayBuffers` that represent part of the `GPUBuffer`'s allocations. Mapping a GPUBuffer is requested asynchronously with `mapAsync()` so that the user agent can ensure the GPU finished using the `GPUBuffer` before the application can access its content. A mapped `GPUBuffer` cannot be used by the GPU and must be unmapped using `unmap()` before work using it can be submitted to the Queue timeline.
 
+**Important** point:
+`GPUBuffer` mapping is done as an ownership transfer between the CPU and the GPU. At each instant, only one of the two can access the buffer, so no race is possible. In summary, GPU cannot access mapped buffers, and CPU cannot access unmapped ones.
+
 ## Pipelines
 
 Structurally, the pipeline consists of a sequence of programmable stages (shaders) and fixed-function states, such as the blending modes.
@@ -246,17 +249,19 @@ _ = &count;
 
 ## References
 
-- [WebGPU spec on W3C](https://gpuweb.github.io/gpuweb/)
-- [WebGPU compute example](https://web.dev/gpu-compute/)
-- [A good Tutorial](https://surma.dev/things/webgpu/)
-- [A youtube example](https://youtu.be/7fiCsG6IILs)
 - [WebGPU on Chrome](https://developer.chrome.com/docs/web-platform/webgpu/)
 - [WebGPU Explainer](https://gpuweb.github.io/gpuweb/explainer/)
+- [Where/how to run WebGPU, CanIUse](https://caniuse.com/webgpu)
+- [WebGPU spec on W3C](https://gpuweb.github.io/gpuweb/)
+- [WebGPU compute example](https://web.dev/gpu-compute/)
+- [WebGPULab examples](https://webgpulab.xbdev.net/)
+- [A good Tutorial](https://surma.dev/things/webgpu/)
+- [An example on YouTube](https://youtu.be/7fiCsG6IILs)
 - [WebGPU Compute](https://developer.chrome.com/articles/gpu-compute/)
 - [WebGPU in Rust](https://github.com/gfx-rs/wgpu/)
 - [WebGPU for TypeScript](https://github.com/gpuweb/types)
-- [WebGPU Native](https://github.com/gfx-rs/wgpu-native)
-- [WebGPU Wiki](https://github.com/gfx-rs/wgpu/wiki)
+- [Rust WebGPU Native](https://github.com/gfx-rs/wgpu-native)
+- [Rust WebGPU Wiki](https://github.com/gfx-rs/wgpu/wiki)
 - [Khronos WebCL](https://www.khronos.org/webcl/)
 - [Debugging wgpu Applications](https://github.com/gfx-rs/wgpu/wiki/Debugging-wgpu-Applications)
 - [Other resources](https://github.com/gfx-rs/wgpu/wiki/Users)
