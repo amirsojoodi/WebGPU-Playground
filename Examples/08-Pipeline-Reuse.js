@@ -25,27 +25,36 @@
   }));
 
   // Create uniform buffer
-  const multiplier = 2.0;
-  const uniformBuffer = device.createBuffer(
-      {size: 4, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST});
-  device.queue.writeBuffer(uniformBuffer, 0, new Float32Array([multiplier]));
+  const multipliers = new Float32Array(inputData1.length).fill(2);
+  const uniformBufferSize = Math.ceil(multipliers.length / 4) * 4;
+  const uniformBufferData = new Float32Array(uniformBufferSize);
+  uniformBufferData.set(multipliers);
+  const uniformBuffer = device.createBuffer({
+    size: uniformBufferData.byteLength,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+  });
+  device.queue.writeBuffer(uniformBuffer, 0, uniformBufferData.buffer);
+
 
   // Create shader module
   const shaderModule = device.createShaderModule({
     code: `
-    struct Uniforms {
-      multiplier: f32
-    }
-    
-    @group(0) @binding(0) var<uniform> uniforms: Uniforms;
-    @group(0) @binding(1) var<storage, read> inputBuffer: array<f32>;
-    @group(0) @binding(2) var<storage, read_write> outputBuffer: array<f32>;
-
-    @compute @workgroup_size(1) fn main(@builtin(global_invocation_id) globalId : vec3<u32>) {
-      let index: u32 = globalId.x;
-      outputBuffer[index] = inputBuffer[index] * uniforms.multiplier;
-    }
-  `,
+      const MULTIPLIERS_SIZE: u32 = ${inputData1.length};
+      struct Uniforms {
+        multipliers: array<vec4<f32>, MULTIPLIERS_SIZE / 4>
+      }
+  
+      @group(0) @binding(0) var<uniform> uniforms: Uniforms;
+      @group(0) @binding(1) var<storage, read> inputBuffer: array<f32>;
+      @group(0) @binding(2) var<storage, read_write> outputBuffer: array<f32>;
+  
+      @compute @workgroup_size(1) fn main(@builtin(global_invocation_id) globalId : vec3<u32>) {
+        let index: u32 = globalId.x;
+        let vec4Index: u32 = index / 4;
+        let vec4Offset: u32 = index % 4;
+        outputBuffer[index] = inputBuffer[index] * uniforms.multipliers[vec4Index][vec4Offset];
+      }
+    `,
   });
 
   // Create pipeline
@@ -99,6 +108,7 @@
 
     // Log the input and output data
     console.log('Input data:', inputData);
+    console.log('Multipliers:', multipliers);
     console.log('Output data:', outputData);
 
     // Cleanup
