@@ -206,6 +206,7 @@ gpuDevice.popErrorScope().then((error) => {
 
 ## Best practices
 
+
 1. More pipelines, more state switching, less performance
 2. Create pipelines in advance, and don't use them immediately after creation.
 Or use the async version. The promise resolves when the pipleline is ready to use without any stalling.
@@ -266,3 +267,5 @@ _ = &count;
 - [Debugging wgpu Applications](https://github.com/gfx-rs/wgpu/wiki/Debugging-wgpu-Applications)
 - [Other resources](https://github.com/gfx-rs/wgpu/wiki/Users)
 - [GPU.js](https://github.com/gpujs/gpu.js)
+- [Nikiv WebGPU](https://wiki.nikiv.dev/computer-graphics/webgpu)
+- [WebGPU IO2023](https://developer.chrome.com/blog/webgpu-io2023/)
