@@ -1,8 +1,68 @@
-# Intro to WebGPU
+# WebGPU For Dummies
 
-Most of the following document is written based on https://www.w3.org/TR/webgpu/ (the december 2022 draft).
+## About
 
-## Timelines
+In this document, authored by [Amir Sojoodi](https://people.distributive.network/amir), I have jumped into the world of WebGPU compute and explore its potential for High-Performance Computing (HPC) and High-Throughput Computing (HTC) applications. It is based on my personal notes gathered during the development of a project at [Distributive](https://distributive.network/). The aim of this document is to provide readers with a clear and accessible tips and tricks to WebGPU compute, enabling them to harness its power for their own projects.
+
+Now, I must admit, coming from an HPC background with expertise in technologies like CUDA, OpenMP, and MPI, I had underestimated the initial challenges of transitioning to the world of WebGPU and JavaScript. It's like switching from driving a Ferrari to a self balancing hoverboard! However, I've put in every ounce of effort to squeeze out every drop of performance potential from the WebGPU API in my own work, and I hope you can do the same!
+
+**Disclaimer**: Please note that the content in this document primarily references the December 2022 draft of the WebGPU specification as published by the World Wide Web Consortium (W3C) at https://www.w3.org/TR/webgpu/. While the specification may have evolved since then, the fundamental concepts and principles discussed here remain relevant and applicable to understanding WebGPU compute.
+
+Now, let's dive into the fascinating(and frustrating!) world of WebGPU compute!
+
+general notes:
+  - Experiences on porting applications to WebGPU
+
+## Introduction to WebGPU Compute
+
+**So, what exactly is WebGPU compute?** Well, it's a cutting-edge web technology that introduces a low-level, high-performance computing API for your favorite web browsers. Gone are the days when GPUs were only used for rendering jaw-dropping graphics. With WebGPU compute, developers like us can tap into the immense computational capabilities of GPUs for a wide range of tasks that go beyond just pixel-pushing.
+
+**But why is this such a big deal?** Well, traditionally, if we wanted to leverage the full power of GPUs, we had to rely on platform-specific technologies like CUDA or OpenCL. Don't get me wrong, those technologies are absolute beasts in terms of power, but they often tied us down to a specific operating system or programming language. WebGPU compute, on the other hand, breaks down those barriers and brings GPU-accelerated computing to the web using a standardized API.
+
+So, in summary, here are the benefits of utilizing WebGPU:
+
+1. Parallel Processing Power
+2. Platform Independence
+3. Web Integration (Duh!)
+4. Ease of Use: That's an unfullfilled promise for now!
+5. Performance Portability: This means that applications can achieve similar performance characteristics across a wide range of devices, from laptops to desktops and even mobile devices, without sacrificing efficiency.
+
+Now, before you get carried away, let me warn you: WebGPU compute isn't all rainbows and unicorns. As with any new technology, there are challenges to overcome. From mastering the intricacies of JavaScript to optimizing your code for parallel execution, you'll face a few hurdles along the way. 
+
+## What is out there?
+
+There are many great tutorials and manuals out there:
+
+- WebGPU [Explainer](https://gpuweb.github.io/gpuweb/explainer/)
+- Introduction by [Surma](https://surma.dev/things/webgpu/)
+- Nikita's great [collection](https://wiki.nikiv.dev/computer-graphics/webgpu)
+- Chrome team [article](https://developer.chrome.com/articles/gpu-compute/)
+- (more in the References section)
+
+And the list goes on! Therefore, I won't bombard you with redundant details covered in the specification and other tutorials. I'll just provide you with a summary of the key notes that serve as handy reminders.
+
+## Core concepts
+
+Let's familiarize ourselves with some key concepts
+
+1. Adapter and device
+2. Initialization
+3. Timeline
+4. Buffer creation
+5. Buffer mapping
+6. Pipeline
+7. Command buffers
+8. Queue
+
+### Adapter and Device
+
+The adapter is like the gateway to the GPU. It represents the physical GPU device available on the user's system. The device, on the other hand, is the driver that manages communication with the adapter. Together, they form the dynamic duo that powers your WebGPU app. I stole this picture from [Andi](https://cohost.org/mcc/post/1406157-i-want-to-talk-about-webgpu):
+
+![insert picture](./Images/wgpu.png):
+wgpu.png
+
+
+### Timeline
 
 A computer system with a user agent at the front-end and GPU at the back-end has components working on different timelines in parallel:
 
@@ -250,22 +310,36 @@ _ = &count;
 
 ## References
 
-- [WebGPU on Chrome](https://developer.chrome.com/docs/web-platform/webgpu/)
-- [WebGPU Explainer](https://gpuweb.github.io/gpuweb/explainer/)
-- [Where/how to run WebGPU, CanIUse](https://caniuse.com/webgpu)
-- [WebGPU spec on W3C](https://gpuweb.github.io/gpuweb/)
-- [WebGPU compute example](https://web.dev/gpu-compute/)
-- [WebGPULab examples](https://webgpulab.xbdev.net/)
-- [A good Tutorial](https://surma.dev/things/webgpu/)
-- [An example on YouTube](https://youtu.be/7fiCsG6IILs)
-- [WebGPU Compute](https://developer.chrome.com/articles/gpu-compute/)
+Ordered to be neat!
+
+- Where to run WebGPU: [CanIUse](https://caniuse.com/webgpu)
+- WebGPU at [Google IO 2023](https://developer.chrome.com/blog/webgpu-io2023/)
+- WebGPU compute [example](https://web.dev/gpu-compute/)
+- Awesome list for [WebGPU](https://github.com/mikbry/awesome-webgpu)
+- Nikita's great [collection](https://wiki.nikiv.dev/computer-graphics/webgpu)
+- Introduction by [Surma](https://surma.dev/things/webgpu/)
+- Chrome team [article](https://developer.chrome.com/articles/gpu-compute/)
+- WebGPU on [Firefox](https://developer.chrome.com/docs/web-platform/webgpu/)
+- WebGPU [explainer](https://gpuweb.github.io/gpuweb/explainer/)
+- WebGPU [spec](https://gpuweb.github.io/gpuweb/)
+- Andi's [weblog](https://cohost.org/mcc/post/1406157-i-want-to-talk-about-webgpu)
+
+Repos and examples:
+
+- [WebGPT model](https://github.com/0hq/WebGPT/)
+- [Native WebGPU](https://github.com/gfx-rs/wgpu-native)
+- [WebGPU for rust](https://github.com/gfx-rs/wgpu/)
 - [WebGPU in Rust](https://github.com/gfx-rs/wgpu/)
-- [WebGPU for TypeScript](https://github.com/gpuweb/types)
-- [Rust WebGPU Native](https://github.com/gfx-rs/wgpu-native)
+- [WebGPU samples](https://github.com/webgpu/webgpu-samples)
 - [Rust WebGPU Wiki](https://github.com/gfx-rs/wgpu/wiki)
+- [Rust WebGPU Users](https://github.com/gfx-rs/wgpu/wiki/Users)
+- [Rust WebGPU Native](https://github.com/gfx-rs/wgpu-native)
+- [WebGPULab examples](https://webgpulab.xbdev.net/)
+- [WebGPU for TypeScript](https://github.com/gpuweb/types)
+- [An example on YouTube](https://youtu.be/7fiCsG6IILs)
+- [Debugging WebGPU Apps](https://github.com/gfx-rs/wgpu/wiki/Debugging-wgpu-Applications)
+
+Other resources:
+
+- [GPU Accelerated JS](https://github.com/gpujs/gpu.js)
 - [Khronos WebCL](https://www.khronos.org/webcl/)
-- [Debugging wgpu Applications](https://github.com/gfx-rs/wgpu/wiki/Debugging-wgpu-Applications)
-- [Other resources](https://github.com/gfx-rs/wgpu/wiki/Users)
-- [GPU.js](https://github.com/gpujs/gpu.js)
-- [Nikiv WebGPU](https://wiki.nikiv.dev/computer-graphics/webgpu)
-- [WebGPU IO2023](https://developer.chrome.com/blog/webgpu-io2023/)
