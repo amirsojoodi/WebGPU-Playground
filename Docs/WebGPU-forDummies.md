@@ -54,36 +54,26 @@ Let's familiarize ourselves with some key concepts
 7. Command buffers
 8. Queue
 
-### Adapter and Device
+I'll dive into each one of them.
 
-The adapter is like the gateway to the GPU. It represents the physical GPU device available on the user's system. The device, on the other hand, is the driver that manages communication with the adapter. Together, they form the dynamic duo that powers your WebGPU app. I stole this picture from [Andi](https://cohost.org/mcc/post/1406157-i-want-to-talk-about-webgpu):
+## Adapter and Device
 
-![insert picture](./Images/wgpu.png):
-wgpu.png
+The adapter is like the gateway to the GPU. It represents the physical GPU device available on the user's system. The device, on the other hand, is the driver that manages communication with the adapter. I stole this picture from [Andi](https://cohost.org/mcc/post/1406157-i-want-to-talk-about-webgpu):
 
-
-### Timeline
-
-A computer system with a user agent at the front-end and GPU at the back-end has components working on different timelines in parallel:
-
-1. **Content timeline**: Associated with the execution of the Web script. It includes calling all methods described by this specification.
-2. **Device timeline**: Associated with the GPU device operations that are issued by the user agent. It includes creation of adapters, devices, and GPU resources and state objects, which are typically synchronous operations from the point of view of the user agent part that controls the GPU, but can live in a separate OS process.
-3. **Queue timeline**: Associated with the execution of operations on the compute units of the GPU. It includes actual draw, copy, and compute jobs that run on the GPU.
-
-## Core concepts
+![insert picture](./Images/wgpu.png)
 
 1. `Adapter`
    - An adapter identifies an implementation of WebGPU on the system:
    - Both an instance of compute/rendering functionality on the platform underlying a browser,
-   - and an instance of a browser's implementation of WebGPU on top of that functionality.
+   - And an instance of a browser's implementation of WebGPU on top of that functionality.
 2. `GPUDevice`
-   - `await adapter.requestDevice(options);`
    - Primary interface for the API
    - Creates resources like Textures, Buffers, Pipelines, etc.
    - Has a `GPUQueue` for executing commands
+   - Get the device with: `await adapter.requestDevice(options);`
 3. `GPUAdapter.features`
    - Adapter lists which ones are available.
-   - Must be specified when the requesting a Device or they won't be active.
+   - Must be specified when the requesting a device or they won't be active.
 4. `GPUAdapter.limits`
    - A sample output can be seen [here](./GTX1060-GPUAdapter.limits.out).
 5. Adapter Info - `adapter.requestAdapterInfo()`
@@ -91,34 +81,76 @@ A computer system with a user agent at the front-end and GPU at the back-end has
 
 ## Initialization
 
-```js
-const adapter = await navigator.gpu.requestAdapter();
-const device = await adapter.requestDevice();
-
-const context = canvas.getContext('webgpu');
-context.configure({
-   device,
-   format: 'bgra8unorm',
-});
-```
-
-## Creating Buffers
+Initialization is the process of setting up the WebGPU context, creating an adapter, and establishing a connection with the device. This is done by calling the `navigator.gpu.requestAdapter()` and `adapter.requestDevice()` methods. The `requestAdapter()` method returns a promise that resolves to an adapter object. The `requestDevice()` method returns a promise that resolves to a device object. Then the device object is used to create resources like buffers, textures, and pipelines.
 
 ```js
-const vertexData = new Float32Array([
-   0, 1, 1,
-   -1, -1, 1,
-   1, -1, 1
-]);
+let gpuDevice = null;
 
-const vertexBuffer = device.createBuffer({
-   size: vertexData.byteLength,
-   usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-});
-device.queue.writeBuffer(vertexBuffer, 0, vertexData);
+async function initializeWebGPU() {
+    // Check to ensure the user agent supports WebGPU.
+    if (!('gpu' in navigator)) {
+        console.error("User agent doesn’t support WebGPU.");
+        return false;
+    }
+
+    // Request an adapter.
+    const gpuAdapter = await navigator.gpu.requestAdapter();
+
+    // requestAdapter may resolve with null if no suitable adapters are found.
+    if (!gpuAdapter) {
+        console.error('No WebGPU adapters found.');
+        return false;
+    }
+
+    // Request a device.
+    // Note that the promise will reject if invalid options are passed to the optional
+    // dictionary. To avoid the promise rejecting always check any features and limits
+    // against the adapters features and limits prior to calling requestDevice().
+    gpuDevice = await gpuAdapter.requestDevice();
+
+    // requestDevice will never return null, but if a valid device request can't be
+    // fulfilled for some reason it may resolve to a device which has already been lost.
+    // Additionally, devices can be lost at any time after creation for a variety of reasons
+    // (ie: browser resource management, driver updates), so it's a good idea to always
+    // handle lost devices gracefully.
+    gpuDevice.lost.then((info) => {
+        console.error(`WebGPU device was lost: ${info.message}`);
+
+        gpuDevice = null;
+
+        // Many causes for lost devices are transient, so applications should try getting a
+        // new device once a previous one has been lost unless the loss was caused by the
+        // application intentionally destroying the device. Note that any WebGPU resources
+        // created with the previous device (buffers, textures, etc) will need to be
+        // re-created with the new one.
+        if (info.reason != 'destroyed') {
+            initializeWebGPU();
+        }
+    });
+
+    onWebGPUInitialized();
+
+    return true;
+}
+
+function onWebGPUInitialized() {
+    // Begin creating WebGPU resources here...
+}
+
+await initializeWebGPU();
 ```
+
+## Timeline
+
+Before we move forward, I think understanding about timeline is important. A computer system with a user agent at the front-end and GPU at the back-end has components working on different timelines in parallel:
+
+1. **Content timeline**: Associated with the execution of the Web script. It includes calling all methods described by this specification.
+2. **Device timeline**: Associated with the GPU device operations that are issued by the user agent. It includes creation of adapters, devices, and GPU resources and state objects, which are typically synchronous operations from the point of view of the user agent part that controls the GPU, but can live in a separate OS process.
+3. **Queue timeline**: Associated with the execution of operations on the compute units of the GPU. It includes actual draw, copy, and compute jobs that run on the GPU.
 
 ## Buffer Mapping
+
+Before we have our data neatly stored in a buffer, we should understand how *mapping* works before we access or update the buffers. This was a bit confusing for me in the beginning. I thought that once you create a buffer, you can access it directly, but that's not the case. You need to map the buffer to access it. Mapping a buffer is an asynchronous operation. An application can request to map a `GPUBuffer` so that they can access its content via `ArrayBuffers` that represent part of the `GPUBuffer`'s allocations. Mapping a GPUBuffer is requested asynchronously with `mapAsync()` so that the user agent can ensure the GPU finished using the `GPUBuffer` before the application can access its content. A mapped `GPUBuffer` cannot be used by the GPU and must be unmapped using `unmap()` before work using it can be submitted to the Queue timeline. Take a look at the following table:
 
 |                             | Regular ArrayBuffer | Shared Memory | Mappable GPU buffer | Non-mappable GPU buffer (or texture) |
 | :-------------------------: | :-----------------: | :-----------: | :-----------------: | :----------------------------------: |
@@ -126,19 +158,80 @@ device.queue.writeBuffer(vertexBuffer, 0, vertexData);
 |   CPU, in the GPU process   |     Not visible     |  **Visible**  |     **Visible**     |             Not visible              |
 |             GPU             |     Not visible     |  Not visible  |     **Visible**     |             **Visible**              |
 
-An application can request to map a `GPUBuffer` so that they can access its content via `ArrayBuffers` that represent part of the `GPUBuffer`'s allocations. Mapping a GPUBuffer is requested asynchronously with `mapAsync()` so that the user agent can ensure the GPU finished using the `GPUBuffer` before the application can access its content. A mapped `GPUBuffer` cannot be used by the GPU and must be unmapped using `unmap()` before work using it can be submitted to the Queue timeline.
+**Important** point: `GPUBuffer` mapping is done as an ownership transfer between the CPU and the GPU. At each instant, only one of the two can access the buffer, so no race is possible. In summary, GPU cannot access mapped buffers, and CPU cannot access unmapped ones.
 
-**Important** point:
-`GPUBuffer` mapping is done as an ownership transfer between the CPU and the GPU. At each instant, only one of the two can access the buffer, so no race is possible. In summary, GPU cannot access mapped buffers, and CPU cannot access unmapped ones.
+## Creating Buffers
 
-## Pipelines
+Now let's create some buffers!
+Buffer creation involves allocating memory on the GPU and defining the properties of the buffer, such as its size, usage flags, and memory type. See the following example. I will talk about command encoders and command buffers later.
+
+```js
+  // Create a GPU buffer in a mapped state and an arrayBuffer for writing.
+  const gpuWriteBuffer = device.createBuffer({
+    mappedAtCreation: true,
+    size: 4,
+    usage: GPUBufferUsage.MAP_WRITE | GPUBufferUsage.COPY_SRC
+  });
+  const arrayBuffer = gpuWriteBuffer.getMappedRange();
+
+  // Write bytes to buffer.
+  new Uint8Array(arrayBuffer).set([0, 1, 2, 3]);
+
+  // At this point, the GPU buffer is mapped, meaning it is owned by the CPU,
+  // and it's accessible in read/write from JavaScript. So that the GPU can
+  // access it, it has to be unmapped which is as simple as calling
+  // gpuBuffer.unmap().
+  gpuWriteBuffer.unmap();
+
+  // Get a GPU buffer for reading in an unmapped state.
+  const gpuReadBuffer = device.createBuffer({
+    mappedAtCreation: false,
+    size: 4,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
+  });
+
+  // Encode commands for copying buffer to buffer.
+  const copyEncoder = device.createCommandEncoder();
+  copyEncoder.copyBufferToBuffer(
+      gpuWriteBuffer /* source buffer */, 0 /* source offset */,
+      gpuReadBuffer /* destination buffer */, 0 /* destination offset */,
+      4 /* size */
+  );
+
+  // Submit copy commands.
+  const copyCommands = copyEncoder.finish();
+  device.queue.submit([copyCommands]);
+
+  // Read buffer.
+  console.time("mapAsync");
+  await gpuReadBuffer.mapAsync(GPUMapMode.READ);
+  console.timeEnd("mapAsync");
+  const copyArrayBuffer = gpuReadBuffer.getMappedRange();
+
+  console.log(new Uint8Array(copyArrayBuffer));
+
+  gpuReadBuffer.unmap();
+```
+
+## Pipelines and Binding Groups
 
 Structurally, the pipeline consists of a sequence of programmable stages (shaders) and fixed-function states, such as the blending modes.
 
-- Comes in `GPURenderPipeline` and `GPUComputePipeline`
-- Immutable after creation
+- They come in `GPURenderPipeline` and `GPUComputePipeline`
+- They are immutable after creation
 
 ```js
+const pipeline = device.createComputePipeline({
+  layout: 'auto',
+  compute: {
+    module: shaderModule,
+    entryPoint: 'computeMain',
+  }
+
+// You may also create a pipeline layout manually.
+const pipelineLayout = device.createPipelineLayout({
+  bindGroupLayouts: [bindGroupLayout],
+});
 const pipeline = device.createComputePipeline({
   layout: pipelineLayout,
   compute: {
@@ -146,14 +239,53 @@ const pipeline = device.createComputePipeline({
     entryPoint: 'computeMain',
   }
 });
+// But what is a bind group layout? See the following
 ```
 
+A binding group layout defines the layout of a bind group. It is a sequence of entries, each of which specifies the binding number, visibility, and type of resource. And a bind group associates GPU buffers to the entries of the shaders (as bind group layout specifies).
+
+In the example below, the `bindGroupLayout` expects two readonly storage buffers at numbered entry bindings 0, 1, and a storage buffer at 2 for the compute shader. The `bindGroup` on the other hand, defined for this bind group layout, associates GPU buffers to the entries: `gpuBufferFirstMatrix` to the binding 0, `gpuBufferSecondMatrix` to the binding 1, and `resultMatrixBuffer` to the binding 2.
+
+```js
+const bindGroupLayout = device.createBindGroupLayout({
+  entries: [
+    {
+      binding: 0,
+      visibility: GPUShaderStage.COMPUTE,
+      buffer: {type: 'read-only-storage'}
+    },
+    {
+      binding: 1,
+      visibility: GPUShaderStage.COMPUTE,
+      buffer: {type: 'read-only-storage'}
+    },
+    {
+      binding: 2,
+      visibility: GPUShaderStage.COMPUTE,
+      buffer: {type: 'storage'}
+    }
+  ]
+});
+
+const bindGroup = device.createBindGroup({
+  layout: bindGroupLayout,
+  entries: [
+    {binding: 0, resource: {buffer: gpuBufferFirstMatrix}},
+    {binding: 1, resource: {buffer: gpuBufferSecondMatrix}},
+    {binding: 2, resource: {buffer: resultMatrixBuffer}}
+  ]
+});
+```
+
+
 ## Queue
+
+The GPU needs an orderly queue to process commands. The queue is responsible for receiving command buffers and executing them in the order they were submitted. It ensures that the GPU follows a structured path.
 
 - Device has a default `GPUQueue`, which is the only one available now.
 - Used to submit commands to the GPU.
 - Also has handy helper functions for writing to buffers and textures.
-- These are the easiest ways to set the contents of these resources.
+  - These are the easiest ways to set the contents of these resources.
 
 ```js
 device.queue.writeBuffer(buffer, 0, typedArray);
@@ -163,7 +295,11 @@ device.queue.writeTexture({ texture: dstTexture },
                           { width: 64, height: 64 });
 ```
 
-## Recording GPU commands
+## Command Buffers
+
+Or as how ChatGPT calls them, *The commanders of the GPU army!*
+
+Command buffers are containers that hold instructions for the GPU to execute. They store commands such as binding resources, setting pipeline states, and dispatching compute operations.
 
 Command buffers are pre-recorded lists of GPU commands that can be submitted to a `GPUQueue` for execution. Each GPU command represents a task to be performed on the GPU, such as setting state, drawing, copying resources, etc.
 
