@@ -1,0 +1,629 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebGPU-For-Dummies</title>
+  <link rel="stylesheet" href="https://stackedit.cn/style.css" />
+  <style type="text/css">
+    .app--dark {
+      background-color: #444;
+    }
+    .app--dark .stackedit__html {
+      padding-left: 0;
+      padding-right: 0;
+    }
+    .app--dark .stackedit__content {
+      padding: 1px 20px 20px;
+    }
+    
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-fork-ribbon-css/0.2.3/gh-fork-ribbon.min.css" />
+</head>
+
+<body class="stackedit app--light">
+  <a class="github-fork-ribbon" href="https://github.com/amirsojoodi/WebGPU-Playground" data-ribbon="Fork me on GitHub" title="Fork me on GitHub">Fork me on GitHub</a>
+  <div class="stackedit__left">
+    <div class="stackedit__toc">
+      
+<ul>
+<li><a href="#webgpu-for-dummies">WebGPU For Dummies</a>
+<ul>
+<li><a href="#about">About</a></li>
+<li><a href="#table-of-contents">Table of Contents</a></li>
+<li><a href="#introduction-to-webgpu-compute">Introduction to WebGPU Compute</a></li>
+<li><a href="#what-is-out-there">What is out there?</a></li>
+<li><a href="#core-concepts">Core Concepts</a></li>
+<li><a href="#adapter-and-device">Adapter and Device</a></li>
+<li><a href="#initialization">Initialization</a></li>
+<li><a href="#timeline">Timeline</a></li>
+<li><a href="#buffer-mapping">Buffer Mapping</a></li>
+<li><a href="#creating-buffers">Creating Buffers</a></li>
+<li><a href="#pipelines-and-binding-groups">Pipelines and Binding Groups</a></li>
+<li><a href="#command-encoders-and-command-buffers">Command Encoders and Command Buffers</a></li>
+<li><a href="#queue">Queue</a></li>
+<li><a href="#best-practices">Best Practices</a></li>
+<li><a href="#debugging-webgpu-code">Debugging WebGPU code</a></li>
+<li><a href="#advanced-topics">Advanced Topics</a></li>
+<li><a href="#references">References</a></li>
+</ul>
+</li>
+</ul>
+
+    </div>
+  </div>
+  <div class="stackedit__right">
+    <div class="stackedit__html">
+      <div class="stackedit__content preview-theme--default">
+        <h1 id="webgpu-for-dummies"><span class="prefix"></span><span class="content">WebGPU For Dummies</span><span class="suffix"></span></h1>
+<h2 id="about"><span class="prefix"></span><span class="content">About</span><span class="suffix"></span></h2>
+<p>In this document, authored by <a href="https://people.distributive.network/amir">Amir Sojoodi</a>, I have jumped into the world of WebGPU compute and explore its potential for High-Performance Computing (HPC) and High-Throughput Computing (HTC) applications. It is based on my personal notes gathered during the development of a project at <a href="https://distributive.network/">Distributive</a>. The aim of this document is to provide readers with a clear and accessible tips and tricks to WebGPU compute, enabling them to harness its power for their own projects.</p>
+<p>Now, I must admit, coming from an HPC background with expertise in technologies like CUDA, OpenMP, and MPI, I had underestimated the initial challenges of transitioning to the world of WebGPU and JavaScript. It's like switching from driving a Ferrari to a self balancing hoverboard! However, I've put in every ounce of effort to squeeze out every drop of performance potential from the WebGPU API in my own work, and I hope you can do the same!</p>
+<p><strong>Disclaimer</strong>: Please note that the content in this document primarily references the December 2022 draft of the WebGPU specification as published by the World Wide Web Consortium (W3C) at <a href="https://www.w3.org/TR/webgpu/">https://www.w3.org/TR/webgpu/</a>. While the specification may have evolved since then, the fundamental concepts and principles discussed here remain relevant and applicable to understanding WebGPU compute.</p>
+<p>Now, let's dive into the fascinating (and frustrating!) world of WebGPU compute!</p>
+<h2 id="table-of-contents"><span class="prefix"></span><span class="content">Table of Contents</span><span class="suffix"></span></h2>
+<ul>
+<li><a href="#webgpu-for-dummies">WebGPU For Dummies</a>
+<ul>
+<li><a href="#about">About</a></li>
+<li><a href="#table-of-contents">Table of Contents</a></li>
+<li><a href="#introduction-to-webgpu-compute">Introduction to WebGPU Compute</a></li>
+<li><a href="#what-is-out-there">What is out there?</a></li>
+<li><a href="#core-concepts">Core Concepts</a></li>
+<li><a href="#adapter-and-device">Adapter and Device</a></li>
+<li><a href="#initialization">Initialization</a></li>
+<li><a href="#timeline">Timeline</a></li>
+<li><a href="#buffer-mapping">Buffer Mapping</a></li>
+<li><a href="#creating-buffers">Creating Buffers</a></li>
+<li><a href="#pipelines-and-binding-groups">Pipelines and Binding Groups</a></li>
+<li><a href="#command-encoders-and-command-buffers">Command Encoders and Command Buffers</a>
+<ul>
+<li><a href="#workgroups">Workgroups</a></li>
+</ul>
+</li>
+<li><a href="#queue">Queue</a></li>
+<li><a href="#best-practices">Best Practices</a></li>
+<li><a href="#debugging-webgpu-code">Debugging WebGPU code</a>
+<ul>
+<li><a href="#label-usage">Label Usage</a></li>
+<li><a href="#debug-group-usage">Debug Group Usage</a></li>
+</ul>
+</li>
+<li><a href="#advanced-topics">Advanced Topics</a></li>
+<li><a href="#references">References</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="introduction-to-webgpu-compute"><span class="prefix"></span><span class="content">Introduction to WebGPU Compute</span><span class="suffix"></span></h2>
+<p><strong>So, what exactly is WebGPU compute?</strong> Well, it's a cutting-edge web technology that introduces a low-level, high-performance computing API for your favorite web browsers. Gone are the days when GPUs were only used for rendering jaw-dropping graphics. With WebGPU compute, developers like us can tap into the immense computational capabilities of GPUs for a wide range of tasks that go beyond just pixel-pushing.</p>
+<p><strong>But why is this such a big deal?</strong> Well, traditionally, if we wanted to leverage the full power of GPUs, we had to rely on platform-specific technologies like CUDA or OpenCL. Don't get me wrong, those technologies are absolute beasts in terms of power, but they often tied us down to a specific operating system or programming language. WebGPU compute, on the other hand, breaks down those barriers and brings GPU-accelerated computing to the web using a standardized API.</p>
+<p>So, in summary, here are the benefits of utilizing WebGPU:</p>
+<ol>
+<li>Parallel Processing Power</li>
+<li>Platform Independence</li>
+<li>Web Integration (Duh!)</li>
+<li>Ease of Use: That's an unfullfilled promise for now!</li>
+<li>Performance Portability: This means that applications can achieve similar performance characteristics across a wide range of devices, from laptops to desktops and even mobile devices, without sacrificing efficiency.</li>
+</ol>
+<p>Now, before you get carried away, let me warn you: WebGPU compute isn't all rainbows and unicorns. As with any new technology, there are challenges to overcome. From mastering the intricacies of JavaScript to optimizing your code for parallel execution, you'll face a few hurdles along the way.</p>
+<h2 id="what-is-out-there"><span class="prefix"></span><span class="content">What is out there?</span><span class="suffix"></span></h2>
+<p>There are many great tutorials and manuals out there:</p>
+<ul>
+<li>WebGPU <a href="https://gpuweb.github.io/gpuweb/explainer/">Explainer</a></li>
+<li>Introduction by <a href="https://surma.dev/things/webgpu/">Surma</a></li>
+<li>Nikita's great <a href="https://wiki.nikiv.dev/computer-graphics/webgpu">collection</a></li>
+<li>Chrome team <a href="https://developer.chrome.com/articles/gpu-compute/">article</a></li>
+<li>(more in the References section)</li>
+</ul>
+<p>And the list goes on! Therefore, I won't bombard you with redundant details covered in the specification and other tutorials. I'll just provide you with a summary of the key notes that serve as handy reminders.</p>
+<h2 id="core-concepts"><span class="prefix"></span><span class="content">Core Concepts</span><span class="suffix"></span></h2>
+<p>Let's familiarize ourselves with some key concepts</p>
+<ol>
+<li>Adapter and device</li>
+<li>Initialization</li>
+<li>Timeline</li>
+<li>Buffer creation</li>
+<li>Buffer mapping</li>
+<li>Pipelines and binding groups</li>
+<li>Command buffers and command encoders</li>
+<li>GPU queue</li>
+</ol>
+<p>Let's dive into each of these key concepts.</p>
+<h2 id="adapter-and-device"><span class="prefix"></span><span class="content">Adapter and Device</span><span class="suffix"></span></h2>
+<p>The adapter is like the gateway to the GPU. It represents the physical GPU device available on the user's system. The device, on the other hand, is the driver that manages communication with the adapter. I stole this picture from <a href="https://cohost.org/mcc/post/1406157-i-want-to-talk-about-webgpu">Andi</a>:</p>
+<p><img alt="WebGPU" src="./Images/wgpu.png"></p>
+<ol>
+<li><code>Adapter</code>
+<ul>
+<li>An adapter identifies an implementation of WebGPU on the system:</li>
+<li>Both an instance of compute/rendering functionality on the platform underlying a browser,</li>
+<li>And an instance of a browser's implementation of WebGPU on top of that functionality.</li>
+</ul>
+</li>
+<li><code>GPUDevice</code>
+<ul>
+<li>Primary interface for the API</li>
+<li>Creates resources like Textures, Buffers, Pipelines, etc.</li>
+<li>Has a <code>GPUQueue</code> for executing commands</li>
+<li>Get the device with: <code>await adapter.requestDevice(options);</code></li>
+</ul>
+</li>
+<li><code>GPUAdapter.features</code>
+<ul>
+<li>Adapter lists which ones are available.</li>
+<li>Must be specified when the requesting a device or they won't be active.</li>
+</ul>
+</li>
+<li><code>GPUAdapter.limits</code>
+<ul>
+<li>A sample output can be seen here:</li>
+</ul>
+</li>
+</ol>
+<pre class=" language-js"><code class="prism  language-js">maxBindGroups<span class="token punctuation">:</span> <span class="token number">4</span>
+maxBindingsPerBindGroup<span class="token punctuation">:</span> <span class="token number">640</span>
+maxBufferSize<span class="token punctuation">:</span> <span class="token number">268435456</span>
+maxColorAttachments<span class="token punctuation">:</span> <span class="token number">8</span>
+maxComputeInvocationsPerWorkgroup<span class="token punctuation">:</span> <span class="token number">256</span>
+maxComputeWorkgroupSizeX<span class="token punctuation">:</span> <span class="token number">256</span>
+maxComputeWorkgroupSizeY<span class="token punctuation">:</span> <span class="token number">256</span>
+maxComputeWorkgroupSizeZ<span class="token punctuation">:</span> <span class="token number">64</span>
+maxComputeWorkgroupStorageSize<span class="token punctuation">:</span> <span class="token number">49152</span>
+maxComputeWorkgroupsPerDimension<span class="token punctuation">:</span> <span class="token number">65535</span>
+maxDynamicStorageBuffersPerPipelineLayout<span class="token punctuation">:</span> <span class="token number">4</span>
+maxDynamicUniformBuffersPerPipelineLayout<span class="token punctuation">:</span> <span class="token number">8</span>
+maxInterStageShaderComponents<span class="token punctuation">:</span> <span class="token number">60</span>
+maxInterStageShaderVariables<span class="token punctuation">:</span> <span class="token number">16</span>
+maxSampledTexturesPerShaderStage<span class="token punctuation">:</span> <span class="token number">16</span>
+maxSamplersPerShaderStage<span class="token punctuation">:</span> <span class="token number">16</span>
+maxStorageBufferBindingSize<span class="token punctuation">:</span> <span class="token number">4294967295</span>
+maxStorageBuffersPerShaderStage<span class="token punctuation">:</span> <span class="token number">8</span>
+maxStorageTexturesPerShaderStage<span class="token punctuation">:</span> <span class="token number">4</span>
+maxTextureArrayLayers<span class="token punctuation">:</span> <span class="token number">256</span>
+maxTextureDimension1D<span class="token punctuation">:</span> <span class="token number">8192</span>
+maxTextureDimension2D<span class="token punctuation">:</span> <span class="token number">8192</span>
+maxTextureDimension3D<span class="token punctuation">:</span> <span class="token number">2048</span>
+maxUniformBufferBindingSize<span class="token punctuation">:</span> <span class="token number">65536</span>
+maxUniformBuffersPerShaderStage<span class="token punctuation">:</span> <span class="token number">12</span>
+maxVertexAttributes<span class="token punctuation">:</span> <span class="token number">16</span>
+maxVertexBufferArrayStride<span class="token punctuation">:</span> <span class="token number">2048</span>
+maxVertexBuffers<span class="token punctuation">:</span> <span class="token number">8</span>
+minStorageBufferOffsetAlignment<span class="token punctuation">:</span> <span class="token number">256</span>
+minUniformBufferOffsetAlignment<span class="token punctuation">:</span> <span class="token number">256</span>
+</code></pre>
+<ol start="5">
+<li>Adapter Info - <code>adapter.requestAdapterInfo()</code>
+<ul>
+<li>Information including <em>vendor, architecture, device, driver, and description</em></li>
+</ul>
+</li>
+</ol>
+<h2 id="initialization"><span class="prefix"></span><span class="content">Initialization</span><span class="suffix"></span></h2>
+<p>Initialization is the process of setting up the WebGPU context, creating an adapter, and establishing a connection with the device. This is done by calling the <code>navigator.gpu.requestAdapter()</code> and <code>adapter.requestDevice()</code> methods. The <code>requestAdapter()</code> method returns a promise that resolves to an adapter object. The <code>requestDevice()</code> method returns a promise that resolves to a device object. Then the device object is used to create resources like buffers, textures, and pipelines.</p>
+<pre class=" language-js"><code class="prism  language-js"><span class="token keyword">let</span> gpuDevice <span class="token operator">=</span> <span class="token keyword">null</span><span class="token punctuation">;</span>
+
+<span class="token keyword">async</span> <span class="token keyword">function</span> <span class="token function">initializeWebGPU</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token comment">// Check to ensure the user agent supports WebGPU.</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span><span class="token punctuation">(</span><span class="token string">'gpu'</span> <span class="token keyword">in</span> navigator<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        console<span class="token punctuation">.</span><span class="token function">error</span><span class="token punctuation">(</span><span class="token string">"User agent doesn't support WebGPU."</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token keyword">return</span> <span class="token boolean">false</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+
+    <span class="token comment">// Request an adapter.</span>
+    <span class="token keyword">const</span> gpuAdapter <span class="token operator">=</span> <span class="token keyword">await</span> navigator<span class="token punctuation">.</span>gpu<span class="token punctuation">.</span><span class="token function">requestAdapter</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+    <span class="token comment">// requestAdapter may resolve with null if no suitable adapters are found.</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span>gpuAdapter<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        console<span class="token punctuation">.</span><span class="token function">error</span><span class="token punctuation">(</span><span class="token string">'No WebGPU adapters found.'</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token keyword">return</span> <span class="token boolean">false</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+
+    <span class="token comment">// Request a device.</span>
+    <span class="token comment">// Note that the promise will reject if invalid options are passed to the optional</span>
+    <span class="token comment">// dictionary. To avoid the promise rejecting always check any features and limits</span>
+    <span class="token comment">// against the adapters features and limits prior to calling requestDevice().</span>
+    gpuDevice <span class="token operator">=</span> <span class="token keyword">await</span> gpuAdapter<span class="token punctuation">.</span><span class="token function">requestDevice</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+    <span class="token comment">// requestDevice will never return null, but if a valid device request can't be</span>
+    <span class="token comment">// fulfilled for some reason it may resolve to a device which has already been lost.</span>
+    <span class="token comment">// Additionally, devices can be lost at any time after creation for a variety of reasons</span>
+    <span class="token comment">// (ie: browser resource management, driver updates), so it's a good idea to always</span>
+    <span class="token comment">// handle lost devices gracefully.</span>
+    gpuDevice<span class="token punctuation">.</span>lost<span class="token punctuation">.</span><span class="token function">then</span><span class="token punctuation">(</span><span class="token punctuation">(</span>info<span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span>
+        console<span class="token punctuation">.</span><span class="token function">error</span><span class="token punctuation">(</span><span class="token template-string"><span class="token string">`WebGPU device was lost: </span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>info<span class="token punctuation">.</span>message<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">`</span></span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+        gpuDevice <span class="token operator">=</span> <span class="token keyword">null</span><span class="token punctuation">;</span>
+
+        <span class="token comment">// Many causes for lost devices are transient, so applications should try getting a</span>
+        <span class="token comment">// new device once a previous one has been lost unless the loss was caused by the</span>
+        <span class="token comment">// application intentionally destroying the device. Note that any WebGPU resources</span>
+        <span class="token comment">// created with the previous device (buffers, textures, etc) will need to be</span>
+        <span class="token comment">// re-created with the new one.</span>
+        <span class="token keyword">if</span> <span class="token punctuation">(</span>info<span class="token punctuation">.</span>reason <span class="token operator">!==</span> <span class="token string">'destroyed'</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+            <span class="token function">initializeWebGPU</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token punctuation">}</span>
+    <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+    <span class="token function">onWebGPUInitialized</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+    <span class="token keyword">return</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">function</span> <span class="token function">onWebGPUInitialized</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token comment">// Begin creating WebGPU resources here...</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">await</span> <span class="token function">initializeWebGPU</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</code></pre>
+<h2 id="timeline"><span class="prefix"></span><span class="content">Timeline</span><span class="suffix"></span></h2>
+<p>Before we move forward, I think understanding about timeline is important. A computer system with a user agent at the front-end and GPU at the back-end has components working on different timelines in parallel:</p>
+<ol>
+<li><strong>Content timeline</strong>: Associated with the execution of the Web script. It includes calling all methods described by this specification.</li>
+<li><strong>Device timeline</strong>: Associated with the GPU device operations that are issued by the user agent. It includes creation of adapters, devices, and GPU resources and state objects, which are typically synchronous operations from the point of view of the user agent part that controls the GPU, but can live in a separate OS process.</li>
+<li><strong>Queue timeline</strong>: Associated with the execution of operations on the compute units of the GPU. It includes actual draw, copy, and compute jobs that run on the GPU.</li>
+</ol>
+<h2 id="buffer-mapping"><span class="prefix"></span><span class="content">Buffer Mapping</span><span class="suffix"></span></h2>
+<p>Before we have our data neatly stored in a buffer, we should understand how <em>mapping</em> works before we access or update the buffers. This was a bit confusing for me in the beginning. I thought that once you create a buffer, you can access it directly, but that's not the case. You need to map the buffer to access it. Mapping a buffer is an asynchronous operation. An application can request to map a <code>GPUBuffer</code> so that they can access its content via <code>ArrayBuffers</code> that represent part of the <code>GPUBuffer</code>'s allocations. Mapping a GPUBuffer is requested asynchronously with <code>mapAsync()</code> so that the user agent can ensure the GPU finished using the <code>GPUBuffer</code> before the application can access its content. A mapped <code>GPUBuffer</code> cannot be used by the GPU and must be unmapped using <code>unmap()</code> before work using it can be submitted to the Queue timeline. Take a look at the following table:</p>
+
+<table>
+<thead>
+<tr>
+<th align="center"></th>
+<th align="center">Regular ArrayBuffer</th>
+<th align="center">Shared Memory</th>
+<th align="center">Mappable GPU buffer</th>
+<th align="center">Non-mappable GPU buffer (or texture)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center">CPU, in the content process</td>
+<td align="center"><strong>Visible</strong></td>
+<td align="center"><strong>Visible</strong></td>
+<td align="center">Not visible</td>
+<td align="center">Not visible</td>
+</tr>
+<tr>
+<td align="center">CPU, in the GPU process</td>
+<td align="center">Not visible</td>
+<td align="center"><strong>Visible</strong></td>
+<td align="center"><strong>Visible</strong></td>
+<td align="center">Not visible</td>
+</tr>
+<tr>
+<td align="center">GPU</td>
+<td align="center">Not visible</td>
+<td align="center">Not visible</td>
+<td align="center"><strong>Visible</strong></td>
+<td align="center"><strong>Visible</strong></td>
+</tr>
+</tbody>
+</table><p><strong>Important</strong> point: <code>GPUBuffer</code> mapping is done as an ownership transfer between the CPU and the GPU. At each instant, only one of the two can access the buffer, so no race is possible. In summary, GPU cannot access mapped buffers, and CPU cannot access unmapped ones.</p>
+<h2 id="creating-buffers"><span class="prefix"></span><span class="content">Creating Buffers</span><span class="suffix"></span></h2>
+<p>Now let's create some buffers!<br>
+Buffer creation involves allocating memory on the GPU and defining the properties of the buffer, such as its size, usage flags, and memory type. See the following example. I will talk about command encoders and command buffers later.</p>
+<pre class=" language-js"><code class="prism  language-js">  <span class="token comment">// Create a GPU buffer in a mapped state and an arrayBuffer for writing.</span>
+  <span class="token keyword">const</span> gpuWriteBuffer <span class="token operator">=</span> device<span class="token punctuation">.</span><span class="token function">createBuffer</span><span class="token punctuation">(</span><span class="token punctuation">{</span>
+    mappedAtCreation<span class="token punctuation">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span>
+    size<span class="token punctuation">:</span> <span class="token number">4</span><span class="token punctuation">,</span>
+    usage<span class="token punctuation">:</span> GPUBufferUsage<span class="token punctuation">.</span>MAP_WRITE <span class="token operator">|</span> GPUBufferUsage<span class="token punctuation">.</span>COPY_SRC
+  <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token keyword">const</span> arrayBuffer <span class="token operator">=</span> gpuWriteBuffer<span class="token punctuation">.</span><span class="token function">getMappedRange</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token comment">// Write bytes to buffer.</span>
+  <span class="token keyword">new</span> <span class="token class-name">Uint8Array</span><span class="token punctuation">(</span>arrayBuffer<span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token keyword">set</span><span class="token punctuation">(</span><span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">2</span><span class="token punctuation">,</span> <span class="token number">3</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token comment">// At this point, the GPU buffer is mapped, meaning it is owned by the CPU,</span>
+  <span class="token comment">// and it's accessible in read/write from JavaScript. So that the GPU can</span>
+  <span class="token comment">// access it, it has to be unmapped which is as simple as calling</span>
+  <span class="token comment">// gpuBuffer.unmap().</span>
+  gpuWriteBuffer<span class="token punctuation">.</span><span class="token function">unmap</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token comment">// Get a GPU buffer for reading in an unmapped state.</span>
+  <span class="token keyword">const</span> gpuReadBuffer <span class="token operator">=</span> device<span class="token punctuation">.</span><span class="token function">createBuffer</span><span class="token punctuation">(</span><span class="token punctuation">{</span>
+    mappedAtCreation<span class="token punctuation">:</span> <span class="token boolean">false</span><span class="token punctuation">,</span>
+    size<span class="token punctuation">:</span> <span class="token number">4</span><span class="token punctuation">,</span>
+    usage<span class="token punctuation">:</span> GPUBufferUsage<span class="token punctuation">.</span>COPY_DST <span class="token operator">|</span> GPUBufferUsage<span class="token punctuation">.</span>MAP_READ
+  <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token comment">// Encode commands for copying buffer to buffer.</span>
+  <span class="token keyword">const</span> copyEncoder <span class="token operator">=</span> device<span class="token punctuation">.</span><span class="token function">createCommandEncoder</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  copyEncoder<span class="token punctuation">.</span><span class="token function">copyBufferToBuffer</span><span class="token punctuation">(</span>
+      gpuWriteBuffer <span class="token comment">/* source buffer */</span><span class="token punctuation">,</span> <span class="token number">0</span> <span class="token comment">/* source offset */</span><span class="token punctuation">,</span>
+      gpuReadBuffer <span class="token comment">/* destination buffer */</span><span class="token punctuation">,</span> <span class="token number">0</span> <span class="token comment">/* destination offset */</span><span class="token punctuation">,</span>
+      <span class="token number">4</span> <span class="token comment">/* size */</span>
+  <span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token comment">// Submit copy commands.</span>
+  <span class="token keyword">const</span> copyCommands <span class="token operator">=</span> copyEncoder<span class="token punctuation">.</span><span class="token function">finish</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  device<span class="token punctuation">.</span>queue<span class="token punctuation">.</span><span class="token function">submit</span><span class="token punctuation">(</span><span class="token punctuation">[</span>copyCommands<span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token comment">// Read buffer.</span>
+  console<span class="token punctuation">.</span><span class="token function">time</span><span class="token punctuation">(</span><span class="token string">"mapAsync"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token keyword">await</span> gpuReadBuffer<span class="token punctuation">.</span><span class="token function">mapAsync</span><span class="token punctuation">(</span>GPUMapMode<span class="token punctuation">.</span>READ<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  console<span class="token punctuation">.</span><span class="token function">timeEnd</span><span class="token punctuation">(</span><span class="token string">"mapAsync"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token keyword">const</span> copyArrayBuffer <span class="token operator">=</span> gpuReadBuffer<span class="token punctuation">.</span><span class="token function">getMappedRange</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token keyword">new</span> <span class="token class-name">Uint8Array</span><span class="token punctuation">(</span>copyArrayBuffer<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  gpuReadBuffer<span class="token punctuation">.</span><span class="token function">unmap</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</code></pre>
+<h2 id="pipelines-and-binding-groups"><span class="prefix"></span><span class="content">Pipelines and Binding Groups</span><span class="suffix"></span></h2>
+<p>Structurally, the pipeline consists of a sequence of programmable stages (shaders) and fixed-function states, such as the blending modes.</p>
+<ul>
+<li>They come in <code>GPURenderPipeline</code> and <code>GPUComputePipeline</code></li>
+<li>They are immutable after creation</li>
+</ul>
+<pre class=" language-js"><code class="prism  language-js"><span class="token comment">// You may create a pipeline layout manually (not advised really).</span>
+<span class="token comment">// Or you may create it automatically (see below)</span>
+<span class="token keyword">const</span> pipelineLayout <span class="token operator">=</span> device<span class="token punctuation">.</span><span class="token function">createPipelineLayout</span><span class="token punctuation">(</span><span class="token punctuation">{</span>
+  bindGroupLayouts<span class="token punctuation">:</span> <span class="token punctuation">[</span>bindGroupLayout<span class="token punctuation">]</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token keyword">const</span> pipeline <span class="token operator">=</span> device<span class="token punctuation">.</span><span class="token function">createComputePipeline</span><span class="token punctuation">(</span><span class="token punctuation">{</span>
+  layout<span class="token punctuation">:</span> pipelineLayout<span class="token punctuation">,</span>
+  compute<span class="token punctuation">:</span> <span class="token punctuation">{</span>
+    module<span class="token punctuation">:</span> shaderModule<span class="token punctuation">,</span>
+    entryPoint<span class="token punctuation">:</span> <span class="token string">'computeMain'</span><span class="token punctuation">,</span>
+  <span class="token punctuation">}</span>
+<span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token comment">// But what is a bind group layout? See the following</span>
+</code></pre>
+<p>A binding group layout defines the layout of a bind group. It is a sequence of entries, each of which specifies the binding number, visibility, and type of resource. And a bind group associates GPU buffers to the entries of the shaders (as bind group layout specifies).</p>
+<p>In the example below, the <code>bindGroupLayout</code> expects two readonly storage buffers at numbered entry bindings 0, 1, and a storage buffer at 2 for the compute shader. The <code>bindGroup</code> on the other hand, defined for this bind group layout, associates GPU buffers to the entries: <code>gpuBufferFirstMatrix</code> to the binding 0, <code>gpuBufferSecondMatrix</code> to the binding 1, and <code>resultMatrixBuffer</code> to the binding 2.</p>
+<pre class=" language-js"><code class="prism  language-js"><span class="token keyword">const</span> bindGroupLayout <span class="token operator">=</span> device<span class="token punctuation">.</span><span class="token function">createBindGroupLayout</span><span class="token punctuation">(</span><span class="token punctuation">{</span>
+  entries<span class="token punctuation">:</span> <span class="token punctuation">[</span>
+    <span class="token punctuation">{</span>
+      binding<span class="token punctuation">:</span> <span class="token number">0</span><span class="token punctuation">,</span>
+      visibility<span class="token punctuation">:</span> GPUShaderStage<span class="token punctuation">.</span>COMPUTE<span class="token punctuation">,</span>
+      buffer<span class="token punctuation">:</span> <span class="token punctuation">{</span>type<span class="token punctuation">:</span> <span class="token string">'read-only-storage'</span><span class="token punctuation">}</span>
+    <span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">{</span>
+      binding<span class="token punctuation">:</span> <span class="token number">1</span><span class="token punctuation">,</span>
+      visibility<span class="token punctuation">:</span> GPUShaderStage<span class="token punctuation">.</span>COMPUTE<span class="token punctuation">,</span>
+      buffer<span class="token punctuation">:</span> <span class="token punctuation">{</span>type<span class="token punctuation">:</span> <span class="token string">'read-only-storage'</span><span class="token punctuation">}</span>
+    <span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">{</span>
+      binding<span class="token punctuation">:</span> <span class="token number">2</span><span class="token punctuation">,</span>
+      visibility<span class="token punctuation">:</span> GPUShaderStage<span class="token punctuation">.</span>COMPUTE<span class="token punctuation">,</span>
+      buffer<span class="token punctuation">:</span> <span class="token punctuation">{</span>type<span class="token punctuation">:</span> <span class="token string">'storage'</span><span class="token punctuation">}</span>
+    <span class="token punctuation">}</span>
+  <span class="token punctuation">]</span>
+<span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+<span class="token keyword">const</span> bindGroup <span class="token operator">=</span> device<span class="token punctuation">.</span><span class="token function">createBindGroup</span><span class="token punctuation">(</span><span class="token punctuation">{</span>
+  layout<span class="token punctuation">:</span> bindGroupLayout<span class="token punctuation">,</span>
+  entries<span class="token punctuation">:</span> <span class="token punctuation">[</span>
+    <span class="token punctuation">{</span>binding<span class="token punctuation">:</span> <span class="token number">0</span><span class="token punctuation">,</span> resource<span class="token punctuation">:</span> <span class="token punctuation">{</span>buffer<span class="token punctuation">:</span> gpuBufferFirstMatrix<span class="token punctuation">}</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">{</span>binding<span class="token punctuation">:</span> <span class="token number">1</span><span class="token punctuation">,</span> resource<span class="token punctuation">:</span> <span class="token punctuation">{</span>buffer<span class="token punctuation">:</span> gpuBufferSecondMatrix<span class="token punctuation">}</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">{</span>binding<span class="token punctuation">:</span> <span class="token number">2</span><span class="token punctuation">,</span> resource<span class="token punctuation">:</span> <span class="token punctuation">{</span>buffer<span class="token punctuation">:</span> resultMatrixBuffer<span class="token punctuation">}</span><span class="token punctuation">}</span>
+  <span class="token punctuation">]</span>
+<span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</code></pre>
+<p>If you use the <code>auto</code> layout for the compute pipeline, it will only contain bindings for variables that are directly or transitively referenced by the shader's entry point function. If you don't reference the defined vars in the shader code, then they won't be added to the automatically generated bind group layout.<br>
+One quick way to reference the vars inside the shader is to add dummy referencing lines to the top of the shader's entry point:</p>
+<pre class=" language-js"><code class="prism  language-js">@<span class="token function">group</span><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">)</span> @<span class="token function">binding</span><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">)</span> <span class="token keyword">var</span><span class="token operator">&lt;</span>storage<span class="token punctuation">,</span> read_write<span class="token operator">&gt;</span> results <span class="token punctuation">:</span> array<span class="token operator">&lt;</span>i32<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+@<span class="token function">group</span><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">)</span> @<span class="token function">binding</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">)</span> <span class="token keyword">var</span><span class="token operator">&lt;</span>storage<span class="token punctuation">,</span> read_write<span class="token operator">&gt;</span> count <span class="token punctuation">:</span> array<span class="token operator">&lt;</span>u32<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+
+@compute @<span class="token function">workgroup_size</span><span class="token punctuation">(</span><span class="token number">16</span><span class="token punctuation">,</span> <span class="token number">16</span><span class="token punctuation">)</span>
+fn <span class="token function">main</span><span class="token punctuation">(</span>@<span class="token function">builtin</span><span class="token punctuation">(</span>workgroup_id<span class="token punctuation">)</span> groupId <span class="token punctuation">:</span> vec3<span class="token operator">&lt;</span>u32<span class="token operator">&gt;</span><span class="token punctuation">,</span>
+  @<span class="token function">builtin</span><span class="token punctuation">(</span>local_invocation_id<span class="token punctuation">)</span> threadId<span class="token punctuation">:</span> vec3<span class="token operator">&lt;</span>u32<span class="token operator">&gt;</span><span class="token punctuation">,</span>
+  @<span class="token function">builtin</span><span class="token punctuation">(</span>global_invocation_id<span class="token punctuation">)</span> globalId <span class="token punctuation">:</span> vec3<span class="token operator">&lt;</span>u32<span class="token operator">&gt;</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+
+_ <span class="token operator">=</span> <span class="token operator">&amp;</span>results<span class="token punctuation">;</span>
+_ <span class="token operator">=</span> <span class="token operator">&amp;</span>count<span class="token punctuation">;</span>
+
+<span class="token comment">// This helped me a lot to set up the binding group with 'auto' layout.</span>
+</code></pre>
+<p>In this way the bind group creation would be like the following:</p>
+<pre class=" language-js"><code class="prism  language-js"><span class="token keyword">const</span> bindGroup <span class="token operator">=</span> device<span class="token punctuation">.</span><span class="token function">createBindGroup</span><span class="token punctuation">(</span><span class="token punctuation">{</span>
+  layout <span class="token punctuation">:</span> pipeline<span class="token punctuation">.</span><span class="token function">getBindGroupLayout</span><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+  entries<span class="token punctuation">:</span> <span class="token punctuation">[</span>
+    <span class="token punctuation">{</span>binding <span class="token punctuation">:</span> <span class="token number">0</span><span class="token punctuation">,</span> resource <span class="token punctuation">:</span> <span class="token punctuation">{</span>buffer <span class="token punctuation">:</span> results<span class="token punctuation">}</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token punctuation">{</span>binding <span class="token punctuation">:</span> <span class="token number">1</span><span class="token punctuation">,</span> resource <span class="token punctuation">:</span> <span class="token punctuation">{</span>buffer <span class="token punctuation">:</span> count<span class="token punctuation">}</span><span class="token punctuation">}</span>
+  <span class="token punctuation">]</span>
+<span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</code></pre>
+<h2 id="command-encoders-and-command-buffers"><span class="prefix"></span><span class="content">Command Encoders and Command Buffers</span><span class="suffix"></span></h2>
+<p><em>The commanders of the GPU army!</em></p>
+<p>Command buffers are containers that hold instructions for the GPU to execute. They store commands such as binding resources, setting pipeline states, and dispatching compute operations.</p>
+<p>Command buffers are pre-recorded lists of GPU commands that can be submitted to the <code>GPUQueue</code> for execution. Each GPU command represents a task to be performed on the GPU, such as setting state, drawing, copying resources, etc. Here are the steps to create a command buffer in WebGPU:</p>
+<ol>
+<li>Create a <code>GPUCommandEncoder</code> from the device</li>
+<li>Perform copies between buffers/textures</li>
+<li>Begin render or compute passes</li>
+<li>Creates a <code>GPUCommandBuffer</code> when finished.</li>
+<li>Submit the command buffer to the queue for execution. (more on this later)</li>
+</ol>
+<p>Some notes:</p>
+<ul>
+<li>Command buffers don't do anything until submitted to the queue.</li>
+<li>A <code>GPUCommandBuffer</code> can only be submitted once, at which point it becomes invalid. To reuse rendering commands across multiple submissions, use <code>GPURenderBundle</code>. (I have not tested this myself yet.)</li>
+</ul>
+<p><strong>What is a Pass?</strong> A pass is a set of commands that are executed together. A pass can be a render pass or a compute pass. Obviously, a render pass is a set of commands that render to a texture and a compute pass is a set of commands that perform compute operations.</p>
+<pre class=" language-js"><code class="prism  language-js"><span class="token keyword">const</span> commandEncoder <span class="token operator">=</span> device<span class="token punctuation">.</span><span class="token function">createCommandEncoder</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+commandEncoder<span class="token punctuation">.</span><span class="token function">copyBufferToBuffer</span><span class="token punctuation">(</span>bufferA<span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">,</span>
+                                  bufferB<span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">,</span> <span class="token number">256</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+<span class="token keyword">const</span> passEncoder <span class="token operator">=</span> commandEncoder<span class="token punctuation">.</span><span class="token function">beginComputePass</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+passEncoder<span class="token punctuation">.</span><span class="token function">setPipeline</span><span class="token punctuation">(</span>pipeline<span class="token punctuation">)</span><span class="token punctuation">;</span>
+passEncoder<span class="token punctuation">.</span><span class="token function">setBindGroup</span><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> bindGroup<span class="token punctuation">)</span><span class="token punctuation">;</span>
+passEncoder<span class="token punctuation">.</span><span class="token function">dispatchWorkgroups</span><span class="token punctuation">(</span><span class="token number">128</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+passEncoder<span class="token punctuation">.</span><span class="token function">end</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+<span class="token keyword">const</span> commandBuffer <span class="token operator">=</span> commandEncoder<span class="token punctuation">.</span><span class="token function">finish</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+device<span class="token punctuation">.</span>queue<span class="token punctuation">.</span><span class="token function">submit</span><span class="token punctuation">(</span><span class="token punctuation">[</span>commandBuffer<span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</code></pre>
+<h3 id="workgroups"><span class="prefix"></span><span class="content">Workgroups</span><span class="suffix"></span></h3>
+<p>A workgroup is like a thread block in CUDA world. It is a group of threads that can share data through shared memory and synchronize if required.</p>
+<pre class=" language-js"><code class="prism  language-js"><span class="token comment">// group_size =&gt; workgroup_size(Sx, Sy, Sz) (similar to thread block)</span>
+<span class="token comment">// group_count =&gt; dispatchWorkgroups(Nx, Ny, Nz) (similar to a grid)</span>
+<span class="token comment">// Total tasks =&gt; (Nx * Ny * Nz * Sx * Sy * Sz)</span>
+pass<span class="token punctuation">.</span><span class="token function">dispatchWorkgroups</span><span class="token punctuation">(</span>group_count<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> group_count<span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">,</span> group_count<span class="token punctuation">[</span><span class="token number">2</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+<span class="token comment">// In the shader module you can have optional built-in variables </span>
+<span class="token comment">// to get the workgroup and thread IDs as follows:</span>
+@compute @<span class="token function">workgroup_size</span><span class="token punctuation">(</span>group_sizeX<span class="token punctuation">,</span> group_sizeY<span class="token punctuation">,</span> group_sizeZ<span class="token punctuation">)</span>
+fn <span class="token function">main</span><span class="token punctuation">(</span>@<span class="token function">builtin</span><span class="token punctuation">(</span>workgroup_id<span class="token punctuation">)</span> groupId <span class="token punctuation">:</span> vec3<span class="token operator">&lt;</span>u32<span class="token operator">&gt;</span><span class="token punctuation">,</span>
+  @<span class="token function">builtin</span><span class="token punctuation">(</span>local_invocation_id<span class="token punctuation">)</span> threadId<span class="token punctuation">:</span> vec3<span class="token operator">&lt;</span>u32<span class="token operator">&gt;</span><span class="token punctuation">,</span>
+  @<span class="token function">builtin</span><span class="token punctuation">(</span>global_invocation_id<span class="token punctuation">)</span> globalId <span class="token punctuation">:</span> vec3<span class="token operator">&lt;</span>u32<span class="token operator">&gt;</span><span class="token punctuation">,</span>
+  @<span class="token function">builtin</span><span class="token punctuation">(</span>num_workgroups<span class="token punctuation">)</span> gridDim <span class="token punctuation">:</span> vec3<span class="token operator">&lt;</span>u32<span class="token operator">&gt;</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token comment">// the shader code</span>
+</code></pre>
+<h2 id="queue"><span class="prefix"></span><span class="content">Queue</span><span class="suffix"></span></h2>
+<p>The GPU needs an orderly queue to process commands. The queue is responsible for receiving command buffers and executing them in the order they were submitted. It ensures that the GPU follows a structured path.</p>
+<ul>
+<li>Device has a default <code>GPUQueue</code>, which is the only one available for now. But I hope in the future, there will be more queues for different purposes.</li>
+<li>Also the Queue has handy helper functions for writing to buffers and textures. These are the easiest ways to set the contents of these resources.</li>
+</ul>
+<pre class=" language-js"><code class="prism  language-js">device<span class="token punctuation">.</span>queue<span class="token punctuation">.</span><span class="token function">writeBuffer</span><span class="token punctuation">(</span>buffer<span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">,</span> typedArray<span class="token punctuation">)</span><span class="token punctuation">;</span>
+device<span class="token punctuation">.</span>queue<span class="token punctuation">.</span><span class="token function">writeTexture</span><span class="token punctuation">(</span><span class="token punctuation">{</span> texture<span class="token punctuation">:</span> dstTexture <span class="token punctuation">}</span><span class="token punctuation">,</span>
+                          typedArray<span class="token punctuation">,</span>
+                          <span class="token punctuation">{</span> bytesPerRow<span class="token punctuation">:</span> <span class="token number">256</span> <span class="token punctuation">}</span><span class="token punctuation">,</span>
+                          <span class="token punctuation">{</span> width<span class="token punctuation">:</span> <span class="token number">64</span><span class="token punctuation">,</span> height<span class="token punctuation">:</span> <span class="token number">64</span> <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</code></pre>
+<p>After submitting command buffers to the queue, the queue will execute them in order. The queue will wait for the previous command buffer to finish before executing the next one. This is called <em>implicit synchronization</em>. After submitting tasks to the queue, the CPU can continue to do other work while the GPU is busy executing the commands. I think there are two ways to synchronize the tasks on the Queue:</p>
+<pre class=" language-js"><code class="prism  language-js"><span class="token comment">// 1. Use the promise returned by the following function</span>
+<span class="token keyword">await</span> device<span class="token punctuation">.</span>queue<span class="token punctuation">.</span><span class="token function">onSubmittedWorkDone</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+<span class="token comment">// 2. If there is any output results in the command buffer that you are</span>
+<span class="token comment">// waiting for, you can call the mapAsync and wait for its promise to resolve.</span>
+<span class="token keyword">await</span> results<span class="token punctuation">.</span><span class="token function">mapAsync</span><span class="token punctuation">(</span>GPUMapMode<span class="token punctuation">.</span>READ<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+</code></pre>
+<p>Ok, now let's wrap up everything we have learned so far with a nice picture (again stolen from Andy):</p>
+<p><img alt="WebGPU" src="./Images/wgpu2.png"></p>
+<h2 id="best-practices"><span class="prefix"></span><span class="content">Best Practices</span><span class="suffix"></span></h2>
+<ol>
+<li>More pipelines, more state switching, less performance</li>
+<li>Create pipelines in advance, and don't use them immediately after creation.<br>
+Or use the async version. The promise resolves when the pipleline is ready to use without any stalling.</li>
+</ol>
+<pre class=" language-js"><code class="prism  language-js">device<span class="token punctuation">.</span><span class="token function">createComputePipelineAsync</span><span class="token punctuation">(</span><span class="token punctuation">{</span>
+ compute<span class="token punctuation">:</span> <span class="token punctuation">{</span>
+   module<span class="token punctuation">:</span> shaderModule<span class="token punctuation">,</span>
+   entryPoint<span class="token punctuation">:</span> <span class="token string">'computeMain'</span>
+ <span class="token punctuation">}</span>
+<span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">then</span><span class="token punctuation">(</span><span class="token punctuation">(</span>pipeline<span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span>
+  <span class="token keyword">const</span> commandEncoder <span class="token operator">=</span> device<span class="token punctuation">.</span><span class="token function">createCommandEncoder</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token keyword">const</span> passEncoder <span class="token operator">=</span> commandEncoder<span class="token punctuation">.</span><span class="token function">beginComputePass</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  passEncoder<span class="token punctuation">.</span><span class="token function">setPipeline</span><span class="token punctuation">(</span>pipeline<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  passEncoder<span class="token punctuation">.</span><span class="token function">setBindGroup</span><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">,</span> bindGroup<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  passEncoder<span class="token punctuation">.</span><span class="token function">dispatchWorkgroups</span><span class="token punctuation">(</span><span class="token number">128</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  passEncoder<span class="token punctuation">.</span><span class="token function">end</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  device<span class="token punctuation">.</span>queue<span class="token punctuation">.</span><span class="token function">submit</span><span class="token punctuation">(</span><span class="token punctuation">[</span>commandEncoder<span class="token punctuation">.</span><span class="token function">finish</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</code></pre>
+<h2 id="debugging-webgpu-code"><span class="prefix"></span><span class="content">Debugging WebGPU code</span><span class="suffix"></span></h2>
+<h3 id="label-usage"><span class="prefix"></span><span class="content">Label Usage</span><span class="suffix"></span></h3>
+<ul>
+<li>Every single object in WebGPU can be given a label, and those labels will be use when reporting error messages.</li>
+<li>Labels have no impact on performance, so there is no reason not to use them!</li>
+</ul>
+<pre class=" language-js"><code class="prism  language-js"><span class="token keyword">const</span> vertexBuffer <span class="token operator">=</span> device<span class="token punctuation">.</span><span class="token function">createBuffer</span><span class="token punctuation">(</span><span class="token punctuation">{</span>
+  label<span class="token punctuation">:</span> <span class="token string">'Player vertices'</span><span class="token punctuation">,</span>
+  size<span class="token punctuation">:</span> vertexData<span class="token punctuation">.</span>byteLength<span class="token punctuation">,</span>
+  usage<span class="token punctuation">:</span> GPUBufferUsage<span class="token punctuation">.</span>INDEX <span class="token operator">|</span> GPUBufferUsage<span class="token punctuation">.</span>COPY_DST<span class="token punctuation">,</span>
+<span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+<span class="token keyword">const</span> passEncoder <span class="token operator">=</span> commandEncoder<span class="token punctuation">.</span><span class="token function">beginRenderPass</span><span class="token punctuation">(</span><span class="token punctuation">{</span>
+  label<span class="token punctuation">:</span> <span class="token string">'Primary render pass'</span><span class="token punctuation">,</span>
+  colorAttachments<span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">{</span>
+    view<span class="token punctuation">:</span> context<span class="token punctuation">.</span><span class="token function">getCurrentTexture</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">createView</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+    loadOp<span class="token punctuation">:</span> <span class="token string">'clear'</span><span class="token punctuation">,</span>
+    clearValue<span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token number">0.0</span><span class="token punctuation">,</span> <span class="token number">0.0</span><span class="token punctuation">,</span> <span class="token number">0.0</span><span class="token punctuation">,</span> <span class="token number">1.0</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+    storeOp<span class="token punctuation">:</span> <span class="token string">'store'</span><span class="token punctuation">,</span>
+  <span class="token punctuation">}</span><span class="token punctuation">]</span>
+<span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</code></pre>
+<h3 id="debug-group-usage"><span class="prefix"></span><span class="content">Debug Group Usage</span><span class="suffix"></span></h3>
+<ul>
+<li>Debug groups are great for telling <em>where</em> in the code an error took place.</li>
+<li>They give a personalized stack with for every error that occurs inside them.</li>
+<li>Just like labels, they show up in the native tools as well.</li>
+<li>Plus they're lightweight, so there is no need to worry about stripping them out of the release code.</li>
+</ul>
+<pre class=" language-js"><code class="prism  language-js"><span class="token keyword">const</span> commandEncoder <span class="token operator">=</span> device<span class="token punctuation">.</span><span class="token function">createCommandEncoder</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+commandEncoder<span class="token punctuation">.</span><span class="token function">pushDebugGroup</span><span class="token punctuation">(</span><span class="token string">'Main Render Loop'</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  commandEncoder<span class="token punctuation">.</span><span class="token function">pushDebugGroup</span><span class="token punctuation">(</span><span class="token string">'Render Scene'</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">renderGameScene</span><span class="token punctuation">(</span>commandEncoder<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  commandEncoder<span class="token punctuation">.</span><span class="token function">popDebugGroup</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  commandEncoder<span class="token punctuation">.</span><span class="token function">pushDebugGroup</span><span class="token punctuation">(</span><span class="token string">'Render UI'</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">renderGameUI</span><span class="token punctuation">(</span>commandEncoder<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  commandEncoder<span class="token punctuation">.</span><span class="token function">popDebugGroup</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+commandEncoder<span class="token punctuation">.</span><span class="token function">popDebugGroup</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+device<span class="token punctuation">.</span>queue<span class="token punctuation">.</span><span class="token function">submit</span><span class="token punctuation">(</span><span class="token punctuation">[</span>commandEncoder<span class="token punctuation">.</span><span class="token function">finish</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</code></pre>
+<p>Using error scopes to capture validation errors from a GPUDevice operation that may fail:</p>
+<pre class=" language-js"><code class="prism  language-js">gpuDevice<span class="token punctuation">.</span><span class="token function">pushErrorScope</span><span class="token punctuation">(</span><span class="token string">'validation'</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+<span class="token keyword">let</span> sampler <span class="token operator">=</span> gpuDevice<span class="token punctuation">.</span><span class="token function">createSampler</span><span class="token punctuation">(</span><span class="token punctuation">{</span>
+    maxAnisotropy<span class="token punctuation">:</span> <span class="token number">0</span><span class="token punctuation">,</span> <span class="token comment">// Invalid, maxAnisotropy must be at least 1.</span>
+<span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+gpuDevice<span class="token punctuation">.</span><span class="token function">popErrorScope</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">then</span><span class="token punctuation">(</span><span class="token punctuation">(</span>error<span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>error<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        <span class="token comment">// There was an error creating the sampler, so discard it.</span>
+        sampler <span class="token operator">=</span> <span class="token keyword">null</span><span class="token punctuation">;</span>
+        console<span class="token punctuation">.</span><span class="token function">error</span><span class="token punctuation">(</span><span class="token template-string"><span class="token string">`An error occured while creating sampler: </span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>error<span class="token punctuation">.</span>message<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">`</span></span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+<span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</code></pre>
+<h2 id="advanced-topics"><span class="prefix"></span><span class="content">Advanced Topics</span><span class="suffix"></span></h2>
+<p>In this section I will talk about the following topics:</p>
+<ol>
+<li>Some notes on WGSL</li>
+<li>Atomic operations in WGSL</li>
+<li>Using uniform buffers in WGSL</li>
+<li>Reusing buffers and command buffers</li>
+<li>Utilizing shared memory</li>
+<li>Streaming (Pipelining) data to the GPU</li>
+<li>Double buffering</li>
+<li>Tips and tricks in porting serial C code to WebGPU+JS</li>
+</ol>
+<p>(will be updated)</p>
+<h2 id="references"><span class="prefix"></span><span class="content">References</span><span class="suffix"></span></h2>
+<p>Ordered to be neat!</p>
+<ul>
+<li>Where to run WebGPU: <a href="https://caniuse.com/webgpu">CanIUse</a></li>
+<li>WebGPU at <a href="https://developer.chrome.com/blog/webgpu-io2023/">Google IO 2023</a></li>
+<li>WebGPU compute <a href="https://web.dev/gpu-compute/">example</a></li>
+<li>Awesome list for <a href="https://github.com/mikbry/awesome-webgpu">WebGPU</a></li>
+<li>Nikita's great <a href="https://wiki.nikiv.dev/computer-graphics/webgpu">collection</a></li>
+<li>Introduction by <a href="https://surma.dev/things/webgpu/">Surma</a></li>
+<li>Chrome team <a href="https://developer.chrome.com/articles/gpu-compute/">article</a></li>
+<li>WebGPU on <a href="https://developer.chrome.com/docs/web-platform/webgpu/">Firefox</a></li>
+<li>WebGPU <a href="https://gpuweb.github.io/gpuweb/explainer/">explainer</a></li>
+<li>WebGPU <a href="https://gpuweb.github.io/gpuweb/">spec</a></li>
+<li>Andi's <a href="https://cohost.org/mcc/post/1406157-i-want-to-talk-about-webgpu">weblog</a></li>
+</ul>
+<p>Repos and examples:</p>
+<ul>
+<li><a href="https://github.com/0hq/WebGPT/">WebGPT model</a></li>
+<li><a href="https://github.com/gfx-rs/wgpu-native">Native WebGPU</a></li>
+<li><a href="https://github.com/gfx-rs/wgpu/">WebGPU for rust</a></li>
+<li><a href="https://github.com/gfx-rs/wgpu/">WebGPU in Rust</a></li>
+<li><a href="https://github.com/webgpu/webgpu-samples">WebGPU samples</a></li>
+<li><a href="https://github.com/gfx-rs/wgpu/wiki">Rust WebGPU Wiki</a></li>
+<li><a href="https://github.com/gfx-rs/wgpu/wiki/Users">Rust WebGPU Users</a></li>
+<li><a href="https://github.com/gfx-rs/wgpu-native">Rust WebGPU Native</a></li>
+<li><a href="https://webgpulab.xbdev.net/">WebGPULab examples</a></li>
+<li><a href="https://github.com/gpuweb/types">WebGPU for TypeScript</a></li>
+<li><a href="https://youtu.be/7fiCsG6IILs">An example on YouTube</a></li>
+<li><a href="https://github.com/gfx-rs/wgpu/wiki/Debugging-wgpu-Applications">Debugging WebGPU Apps</a></li>
+</ul>
+<p>Other resources:</p>
+<ul>
+<li><a href="https://github.com/gpujs/gpu.js">GPU Accelerated JS</a></li>
+<li><a href="https://www.khronos.org/webcl/">Khronos WebCL</a></li>
+</ul>
+
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
