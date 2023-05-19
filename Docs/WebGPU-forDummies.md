@@ -10,8 +10,29 @@ Now, I must admit, coming from an HPC background with expertise in technologies 
 
 Now, let's dive into the fascinating(and frustrating!) world of WebGPU compute!
 
-general notes:
-  - Experiences on porting applications to WebGPU
+## Table of Contents
+
+- [WebGPU For Dummies](#webgpu-for-dummies)
+  - [About](#about)
+  - [Table of Contents](#table-of-contents)
+  - [Introduction to WebGPU Compute](#introduction-to-webgpu-compute)
+  - [What is out there?](#what-is-out-there)
+  - [Core concepts](#core-concepts)
+  - [Adapter and Device](#adapter-and-device)
+  - [Initialization](#initialization)
+  - [Timeline](#timeline)
+  - [Buffer Mapping](#buffer-mapping)
+  - [Creating Buffers](#creating-buffers)
+  - [Pipelines and Binding Groups](#pipelines-and-binding-groups)
+  - [Command Encoders and Command Buffers](#command-encoders-and-command-buffers)
+    - [Workgroups](#workgroups)
+  - [Queue](#queue)
+  - [Best practices](#best-practices)
+  - [Debugging WebGPU code](#debugging-webgpu-code)
+    - [Label Usage](#label-usage)
+    - [Debug group usage](#debug-group-usage)
+  - [Advanced Topics](#advanced-topics)
+  - [References](#references)
 
 ## Introduction to WebGPU Compute
 
@@ -50,17 +71,17 @@ Let's familiarize ourselves with some key concepts
 3. Timeline
 4. Buffer creation
 5. Buffer mapping
-6. Pipeline
-7. Command buffers
-8. Queue
+6. Pipelines and binding groups
+7. Command buffers and command encoders
+8. GPU queue
 
-I'll dive into each one of them.
+Let's dive into each of these key concepts.
 
 ## Adapter and Device
 
 The adapter is like the gateway to the GPU. It represents the physical GPU device available on the user's system. The device, on the other hand, is the driver that manages communication with the adapter. I stole this picture from [Andi](https://cohost.org/mcc/post/1406157-i-want-to-talk-about-webgpu):
 
-![insert picture](./Images/wgpu.png)
+![WebGPU](./Images/wgpu.png)
 
 1. `Adapter`
    - An adapter identifies an implementation of WebGPU on the system:
@@ -221,14 +242,8 @@ Structurally, the pipeline consists of a sequence of programmable stages (shader
 - They are immutable after creation
 
 ```js
-const pipeline = device.createComputePipeline({
-  layout: 'auto',
-  compute: {
-    module: shaderModule,
-    entryPoint: 'computeMain',
-  }
-
-// You may also create a pipeline layout manually.
+// You may create a pipeline layout manually (not advised really).
+// Or you may create it automatically (see below)
 const pipelineLayout = device.createPipelineLayout({
   bindGroupLayouts: [bindGroupLayout],
 });
@@ -277,38 +292,56 @@ const bindGroup = device.createBindGroup({
 });
 ```
 
-
-## Queue
-
-The GPU needs an orderly queue to process commands. The queue is responsible for receiving command buffers and executing them in the order they were submitted. It ensures that the GPU follows a structured path.
-
-- Device has a default `GPUQueue`, which is the only one available now.
-- Used to submit commands to the GPU.
-- Also has handy helper functions for writing to buffers and textures.
-  - These are the easiest ways to set the contents of these resources.
+If you use the `auto` layout for the compute pipeline, it will only contain bindings for variables that are directly or transitively referenced by the shader's entry point function. If you don't reference the defined vars in the shader code, then they won't be added to the automatically generated bind group layout.
+One quick way to reference the vars inside the shader is to add dummy referencing lines to the top of the shader's entry point:
 
 ```js
-device.queue.writeBuffer(buffer, 0, typedArray);
-device.queue.writeTexture({ texture: dstTexture },
-                          typedArray,
-                          { bytesPerRow: 256 },
-                          { width: 64, height: 64 });
+@group(0) @binding(0) var<storage, read_write> results : array<i32>;
+@group(0) @binding(1) var<storage, read_write> count : array<u32>;
+
+@compute @workgroup_size(16, 16)
+fn main(@builtin(workgroup_id) groupId : vec3<u32>,
+  @builtin(local_invocation_id) threadId: vec3<u32>,
+  @builtin(global_invocation_id) globalId : vec3<u32>) {
+
+_ = &results;
+_ = &count;
+
+// This helped me a lot to set up the binding group with 'auto' layout.
 ```
 
-## Command Buffers
+In this way the bind group creation would be like the following:
 
-Or as how ChatGPT calls them, *The commanders of the GPU army!*
+```js
+const bindGroup = device.createBindGroup({
+  layout : pipeline.getBindGroupLayout(0),
+  entries: [
+    {binding : 0, resource : {buffer : results}},
+    {binding : 1, resource : {buffer : count}}
+  ]
+});
+```
+
+## Command Encoders and Command Buffers
+
+*The commanders of the GPU army!*
 
 Command buffers are containers that hold instructions for the GPU to execute. They store commands such as binding resources, setting pipeline states, and dispatching compute operations.
 
-Command buffers are pre-recorded lists of GPU commands that can be submitted to a `GPUQueue` for execution. Each GPU command represents a task to be performed on the GPU, such as setting state, drawing, copying resources, etc.
+Command buffers are pre-recorded lists of GPU commands that can be submitted to the `GPUQueue` for execution. Each GPU command represents a task to be performed on the GPU, such as setting state, drawing, copying resources, etc.
 
-- Create a `GPUCommandEncoder` from the device
-- Perform copies between buffers/textures
-- Begin render or compute passes
-- Creates a `GPUCommandBuffer` when finished.
+1. Create a `GPUCommandEncoder` from the device
+2. Perform copies between buffers/textures
+3. Begin render or compute passes
+4. Creates a `GPUCommandBuffer` when finished.
+5. Submit the command buffer to the queue for execution. (more on this later)
+
+Some notes:
+
 - Command buffers don't do anything until submitted to the queue.
-- A `GPUCommandBuffer` can only be submitted once, at which point it becomes invalid. To reuse rendering commands across multiple submissions, use `GPURenderBundle`.
+- A `GPUCommandBuffer` can only be submitted once, at which point it becomes invalid. To reuse rendering commands across multiple submissions, use `GPURenderBundle`. (I have not tested this myself yet.)
+
+**What is a Pass?** A pass is a set of commands that are executed together. A pass can be a render pass or a compute pass. Obviously, a render pass is a set of commands that render to a texture and a compute pass is a set of commands that perform compute operations.
 
 ```js
 const commandEncoder = device.createCommandEncoder();
@@ -325,13 +358,78 @@ const commandBuffer = commandEncoder.finish();
 device.queue.submit([commandBuffer]);
 ```
 
-## Workgroup
+### Workgroups
+
+A workgroup is like a thread block in CUDA world. It is a group of threads that can share data through shared memory and synchronize if required.
 
 ```js
-dispatch(group_size, group_count)
 // group_size => workgroup_size(Sx, Sy, Sz) (similar to thread block)
-// group_count => dispatchWorkgroups(Nx, Ny, Nz) (similar to grid)
+// group_count => dispatchWorkgroups(Nx, Ny, Nz) (similar to a grid)
 // Total tasks => (Nx * Ny * Nz * Sx * Sy * Sz)
+pass.dispatchWorkgroups(group_count[0], group_count[1], group_count[2]);
+
+// In the shader module you can have optional built-in variables 
+// to get the workgroup and thread IDs as follows:
+@compute @workgroup_size(group_sizeX, group_sizeY, group_sizeZ)
+fn main(@builtin(workgroup_id) groupId : vec3<u32>,
+  @builtin(local_invocation_id) threadId: vec3<u32>,
+  @builtin(global_invocation_id) globalId : vec3<u32>,
+  @builtin(num_workgroups) gridDim : vec3<u32>) {
+    // the shader code
+```
+
+## Queue
+
+The GPU needs an orderly queue to process commands. The queue is responsible for receiving command buffers and executing them in the order they were submitted. It ensures that the GPU follows a structured path.
+
+- Device has a default `GPUQueue`, which is the only one available for now. But I hope in the future, there will be more queues for different purposes.
+- Also the Queue has handy helper functions for writing to buffers and textures. These are the easiest ways to set the contents of these resources.
+
+```js
+device.queue.writeBuffer(buffer, 0, typedArray);
+device.queue.writeTexture({ texture: dstTexture },
+                          typedArray,
+                          { bytesPerRow: 256 },
+                          { width: 64, height: 64 });
+```
+
+After submitting command buffers to the queue, the queue will execute them in order. The queue will wait for the previous command buffer to finish before executing the next one. This is called *implicit synchronization*. After submitting tasks to the queue, the CPU can continue to do other work while the GPU is busy executing the commands. I think there are two ways to synchronize the tasks on the Queue:
+
+```js
+// 1. Use the promise returned by the following function
+await device.queue.onSubmittedWorkDone();
+
+// 2. If there is any output results in the command buffer that you are
+// waiting for, you can call the mapAsync and wait for its promise to resolve.
+await results.mapAsync(GPUMapMode.READ);
+
+```
+
+Ok, now let's wrap up everything we have learned so far with a nice picture (again stolen from Andy):
+
+![WebGPU](./Images/wgpu2.png)
+
+## Best practices
+
+1. More pipelines, more state switching, less performance
+2. Create pipelines in advance, and don't use them immediately after creation.
+Or use the async version. The promise resolves when the pipleline is ready to use without any stalling.
+
+```js
+device.createComputePipelineAsync({
+ compute: {
+   module: shaderModule,
+   entryPoint: 'computeMain'
+ }
+}).then((pipeline) => {
+  const commandEncoder = device.createCommandEncoder();
+  const passEncoder = commandEncoder.beginComputePass();
+  passEncoder.setPipeline(pipeline);
+  passEncoder.setBindGroup(0, bindGroup);
+  passEncoder.dispatchWorkgroups(128);
+  passEncoder.end();
+  device.queue.submit([commandEncoder.finish()]);
+});
 ```
 
 ## Debugging WebGPU code
@@ -400,49 +498,20 @@ gpuDevice.popErrorScope().then((error) => {
 });
 ```
 
-## Best practices
+## Advanced Topics
 
+In this section I will talk about the following topics:
 
-1. More pipelines, more state switching, less performance
-2. Create pipelines in advance, and don't use them immediately after creation.
-Or use the async version. The promise resolves when the pipleline is ready to use without any stalling.
+1. Some notes on WGSL
+2. Atomic operations in WGSL
+3. Using uniform buffers in WGSL
+4. Reusing buffers and command buffers
+5. Utilizing shared memory
+6. Streaming (Pipelining) data to the GPU
+7. Double buffering
+8. Tips and tricks in porting serial C code to WebGPU+JS
 
-```js
-device.createComputePipelineAsync({
- compute: {
-   module: shaderModule,
-   entryPoint: 'computeMain'
- }
-}).then((pipeline) => {
-  const commandEncoder = device.createCommandEncoder();
-  const passEncoder = commandEncoder.beginComputePass();
-  passEncoder.setPipeline(pipeline);
-  passEncoder.setBindGroup(0, bindGroup);
-  passEncoder.dispatchWorkgroups(128);
-  passEncoder.end();
-  device.queue.submit([commandEncoder.finish()]);
-});
-```
-
-## BindGroup Layout auto
-
-If you use the `auto` layout for the compute pipeline, it will only contain bindings for variables that are directly or transitively referenced by the shader's entry point function. If you don't reference the defined vars, then it won't be added to the automatically generated bind group layout.
-One quick way to reference the vars inside the kernel is to add these lines to the top of your entry point:
-
-```
-@group(0) @binding(0) var<storage, read_write> results : array<i32>;
-@group(0) @binding(1) var<storage, read_write> count : atomic<u32>;
-
-@compute @workgroup_size(16, 16)
-fn main(@builtin(workgroup_id) groupId : vec3<u32>,
-  @builtin(local_invocation_id) threadId: vec3<u32>,
-  @builtin(global_invocation_id) globalId : vec3<u32>) {
-
-_ = &results;
-_ = &count;
-
-// ...
-```
+(will be updated soon)
 
 ## References
 
