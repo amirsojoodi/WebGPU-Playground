@@ -8,7 +8,7 @@ Now, I must admit, coming from an HPC background with expertise in technologies 
 
 **Disclaimer**: Please note that the content in this document primarily references the December 2022 draft of the WebGPU specification as published by the World Wide Web Consortium (W3C) at https://www.w3.org/TR/webgpu/. While the specification may have evolved since then, the fundamental concepts and principles discussed here remain relevant and applicable to understanding WebGPU compute.
 
-Now, let's dive into the fascinating(and frustrating!) world of WebGPU compute!
+Now, let's dive into the fascinating (and frustrating!) world of WebGPU compute!
 
 ## Table of Contents
 
@@ -17,7 +17,7 @@ Now, let's dive into the fascinating(and frustrating!) world of WebGPU compute!
   - [Table of Contents](#table-of-contents)
   - [Introduction to WebGPU Compute](#introduction-to-webgpu-compute)
   - [What is out there?](#what-is-out-there)
-  - [Core concepts](#core-concepts)
+  - [Core Concepts](#core-concepts)
   - [Adapter and Device](#adapter-and-device)
   - [Initialization](#initialization)
   - [Timeline](#timeline)
@@ -27,10 +27,10 @@ Now, let's dive into the fascinating(and frustrating!) world of WebGPU compute!
   - [Command Encoders and Command Buffers](#command-encoders-and-command-buffers)
     - [Workgroups](#workgroups)
   - [Queue](#queue)
-  - [Best practices](#best-practices)
+  - [Best Practices](#best-practices)
   - [Debugging WebGPU code](#debugging-webgpu-code)
     - [Label Usage](#label-usage)
-    - [Debug group usage](#debug-group-usage)
+    - [Debug Group Usage](#debug-group-usage)
   - [Advanced Topics](#advanced-topics)
   - [References](#references)
 
@@ -48,7 +48,7 @@ So, in summary, here are the benefits of utilizing WebGPU:
 4. Ease of Use: That's an unfullfilled promise for now!
 5. Performance Portability: This means that applications can achieve similar performance characteristics across a wide range of devices, from laptops to desktops and even mobile devices, without sacrificing efficiency.
 
-Now, before you get carried away, let me warn you: WebGPU compute isn't all rainbows and unicorns. As with any new technology, there are challenges to overcome. From mastering the intricacies of JavaScript to optimizing your code for parallel execution, you'll face a few hurdles along the way. 
+Now, before you get carried away, let me warn you: WebGPU compute isn't all rainbows and unicorns. As with any new technology, there are challenges to overcome. From mastering the intricacies of JavaScript to optimizing your code for parallel execution, you'll face a few hurdles along the way.
 
 ## What is out there?
 
@@ -62,7 +62,7 @@ There are many great tutorials and manuals out there:
 
 And the list goes on! Therefore, I won't bombard you with redundant details covered in the specification and other tutorials. I'll just provide you with a summary of the key notes that serve as handy reminders.
 
-## Core concepts
+## Core Concepts
 
 Let's familiarize ourselves with some key concepts
 
@@ -96,7 +96,41 @@ The adapter is like the gateway to the GPU. It represents the physical GPU devic
    - Adapter lists which ones are available.
    - Must be specified when the requesting a device or they won't be active.
 4. `GPUAdapter.limits`
-   - A sample output can be seen [here](./GTX1060-GPUAdapter.limits.out).
+   - A sample output can be seen here:
+
+```js
+maxBindGroups: 4
+maxBindingsPerBindGroup: 640
+maxBufferSize: 268435456
+maxColorAttachments: 8
+maxComputeInvocationsPerWorkgroup: 256
+maxComputeWorkgroupSizeX: 256
+maxComputeWorkgroupSizeY: 256
+maxComputeWorkgroupSizeZ: 64
+maxComputeWorkgroupStorageSize: 49152
+maxComputeWorkgroupsPerDimension: 65535
+maxDynamicStorageBuffersPerPipelineLayout: 4
+maxDynamicUniformBuffersPerPipelineLayout: 8
+maxInterStageShaderComponents: 60
+maxInterStageShaderVariables: 16
+maxSampledTexturesPerShaderStage: 16
+maxSamplersPerShaderStage: 16
+maxStorageBufferBindingSize: 4294967295
+maxStorageBuffersPerShaderStage: 8
+maxStorageTexturesPerShaderStage: 4
+maxTextureArrayLayers: 256
+maxTextureDimension1D: 8192
+maxTextureDimension2D: 8192
+maxTextureDimension3D: 2048
+maxUniformBufferBindingSize: 65536
+maxUniformBuffersPerShaderStage: 12
+maxVertexAttributes: 16
+maxVertexBufferArrayStride: 2048
+maxVertexBuffers: 8
+minStorageBufferOffsetAlignment: 256
+minUniformBufferOffsetAlignment: 256
+```
+
 5. Adapter Info - `adapter.requestAdapterInfo()`
    - Information including *vendor, architecture, device, driver, and description*
 
@@ -144,7 +178,7 @@ async function initializeWebGPU() {
         // application intentionally destroying the device. Note that any WebGPU resources
         // created with the previous device (buffers, textures, etc) will need to be
         // re-created with the new one.
-        if (info.reason != 'destroyed') {
+        if (info.reason !== 'destroyed') {
             initializeWebGPU();
         }
     });
@@ -328,7 +362,7 @@ const bindGroup = device.createBindGroup({
 
 Command buffers are containers that hold instructions for the GPU to execute. They store commands such as binding resources, setting pipeline states, and dispatching compute operations.
 
-Command buffers are pre-recorded lists of GPU commands that can be submitted to the `GPUQueue` for execution. Each GPU command represents a task to be performed on the GPU, such as setting state, drawing, copying resources, etc.
+Command buffers are pre-recorded lists of GPU commands that can be submitted to the `GPUQueue` for execution. Each GPU command represents a task to be performed on the GPU, such as setting state, drawing, copying resources, etc. Here are the steps to create a command buffer in WebGPU:
 
 1. Create a `GPUCommandEncoder` from the device
 2. Perform copies between buffers/textures
@@ -409,7 +443,7 @@ Ok, now let's wrap up everything we have learned so far with a nice picture (aga
 
 ![WebGPU](./Images/wgpu2.png)
 
-## Best practices
+## Best Practices
 
 1. More pipelines, more state switching, less performance
 2. Create pipelines in advance, and don't use them immediately after creation.
@@ -457,7 +491,7 @@ const passEncoder = commandEncoder.beginRenderPass({
 });
 ```
 
-### Debug group usage
+### Debug Group Usage
 
 - Debug groups are great for telling *where* in the code an error took place.
 - They give a personalized stack with for every error that occurs inside them.
@@ -511,7 +545,7 @@ In this section I will talk about the following topics:
 7. Double buffering
 8. Tips and tricks in porting serial C code to WebGPU+JS
 
-(will be updated soon)
+(will be updated)
 
 ## References
 
