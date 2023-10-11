@@ -3,7 +3,7 @@ let gpuDevice = null;
 async function initializeWebGPU() {
     // Check to ensure the user agent supports WebGPU.
     if (!('gpu' in navigator)) {
-        console.error("User agent doesn’t support WebGPU.");
+        console.error("User agent doesn't support WebGPU.");
         return false;
     }
 
@@ -16,16 +16,20 @@ async function initializeWebGPU() {
         return false;
     }
 
+    const requiredFeatures = {
+        maxStorageBufferBindingSize : 4294967292,
+        maxBufferSize : 4294967292
+    };
     // Request a device.
     // Note that the promise will reject if invalid options are passed to the optional
     // dictionary. To avoid the promise rejecting always check any features and limits
     // against the adapters features and limits prior to calling requestDevice().
-    gpuDevice = await gpuAdapter.requestDevice();
+    gpuDevice = await gpuAdapter.requestDevice({requiredLimits: requiredFeatures});
 
-    // requestDevice will never return null, but if a valid device request can’t be
+    // requestDevice will never return null, but if a valid device request can't be
     // fulfilled for some reason it may resolve to a device which has already been lost.
     // Additionally, devices can be lost at any time after creation for a variety of reasons
-    // (ie: browser resource management, driver updates), so it’s a good idea to always
+    // (ie: browser resource management, driver updates), so it's a good idea to always
     // handle lost devices gracefully.
     gpuDevice.lost.then((info) => {
         console.error(`WebGPU device was lost: ${info.message}`);
