@@ -219,7 +219,14 @@
   console.log(`Transfering data from device to host took: ${
       Number(timestamps[2] - timestamps[1]) / 1000.0} us`);
 
-  // Freeing buffer
+  // Freeing buffers
   gpuReadBuffer.unmap();
   queryReadBuffer.unmap();
+  
+  queryBuffer.destroy();
+  queryReadBuffer.destroy();
+
+  gpuBufferFirstMatrix.destroy();
+  gpuBufferSecondMatrix.destroy();
+  resultMatrixBuffer.destroy();
 })();
