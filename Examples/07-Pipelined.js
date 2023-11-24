@@ -1,3 +1,12 @@
+/**
+ * @file        07-Pipelined.js
+ * @author      Amir Sojoodi, amir@distributive.network
+ * @date        April 2023
+ *
+ * @description Pipelining the workload
+ *
+ */
+
 (async () => {
   // Check for WebGPU support
   if (!navigator.gpu) {

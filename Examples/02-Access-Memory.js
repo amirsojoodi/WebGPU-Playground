@@ -1,11 +1,19 @@
-
-// In short, here's what you need to remember regarding buffer memory
-// operations:
-
-// 1- GPU buffers have to be unmapped to be used in device queue submission.
-// 2- When mapped, GPU buffers can be read and written in JavaScript.
-// 3- GPU buffers are mapped when mapAsync() and createBuffer() with
-// mappedAtCreation set to true are called.
+/**
+ * @file        02-Access-Memory.js
+ * @author      Amir Sojoodi, amir@distributive.network
+ * @date        Nov 2022
+ *
+ * @description Accessing GPU's global memory
+ *
+ * In short, here's what you need to remember regarding buffer memory
+ *
+ * operations:
+ * 1- GPU buffers have to be unmapped to be used in device queue submission.
+ * 2- When mapped, GPU buffers can be read and written in JavaScript.
+ * 3- GPU buffers are mapped when mapAsync() and createBuffer() with
+ * mappedAtCreation set to true are called.
+ *
+ */
 
 
 (async () => {
@@ -61,9 +69,9 @@
   device.queue.submit([copyCommands]);
 
   // Read buffer.
-  console.time("mapAsync");
+  console.time('mapAsync');
   await gpuReadBuffer.mapAsync(GPUMapMode.READ);
-  console.timeEnd("mapAsync");
+  console.timeEnd('mapAsync');
   const copyArrayBuffer = gpuReadBuffer.getMappedRange();
 
   console.log(new Uint8Array(copyArrayBuffer));

@@ -1,7 +1,15 @@
-// Create a GPUBindGroupLayout that describes a binding with a uniform buffer, a
-// texture, and a sampler. Then create a GPUBindGroup and a GPUPipelineLayout
-// using the GPUBindGroupLayout.
-
+/**
+ * @file        01-Binding.js
+ * @author      Amir Sojoodi, amir@distributive.network
+ * @date        Nov 2022
+ *
+ * @description Create Binding Group and Binding Layout
+ *
+ * Create a GPUBindGroupLayout that describes a binding with a uniform buffer, a
+ * texture, and a sampler. Then create a GPUBindGroup and a GPUPipelineLayout
+ * using the GPUBindGroupLayout.
+ * 
+*/
 const bindGroupLayout = gpuDevice.createBindGroupLayout({
   entries: [
     {

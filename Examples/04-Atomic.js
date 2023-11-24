@@ -1,3 +1,12 @@
+/**
+ * @file        04-Atomic.js
+ * @author      Amir Sojoodi, amir@distributive.network
+ * @date        Jan 2023
+ *
+ * @description Atomic operations in WGSL
+ *
+ */
+
 (async () => {
   if (!('gpu' in navigator)) {
     console.log(

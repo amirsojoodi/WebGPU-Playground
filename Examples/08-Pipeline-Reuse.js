@@ -1,3 +1,12 @@
+/**
+ * @file        08-Pipeline-Reuse.js
+ * @author      Amir Sojoodi, amir@distributive.network
+ * @date        May 2023
+ *
+ * @description Reusing the GPUBuffers
+ *
+ */
+
 (async () => {
   // Check for WebGPU support
   if (!navigator.gpu) {

@@ -1,3 +1,12 @@
+/**
+ * @file        05-Complex.js
+ * @author      Amir Sojoodi, amir@distributive.network
+ * @date        Jan 2023
+ *
+ * @description Complex artihmetic operations in WGSL
+ *
+ */
+
 (async () => {
   if (!('gpu' in navigator)) {
     console.log(

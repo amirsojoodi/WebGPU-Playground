@@ -1,3 +1,12 @@
+/**
+ * @file        03-MatMult.js
+ * @author      Amir Sojoodi, amir@distributive.network
+ * @date        Nov 2022
+ *
+ * @description Matrix Multiplication in WebGPU
+ *
+ */
+
 (async () => {
   if (!('gpu' in navigator)) {
     console.log(

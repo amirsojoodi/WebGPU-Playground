@@ -1,3 +1,12 @@
+/**
+ * @file        06-UniformBuffers.js
+ * @author      Amir Sojoodi, amir@distributive.network
+ * @date        May 2023
+ *
+ * @description Uniform Buffers
+ *
+ */
+
 (async () => {
   // Check for WebGPU support
   if (!navigator.gpu) {
