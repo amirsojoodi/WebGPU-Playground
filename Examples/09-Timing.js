@@ -4,14 +4,14 @@
  * @date        November 2023
  *
  * @description Timestamp feature of WebGPU
-*
-* This code measures the total time execution of a matrix multiplication, which
-* includes the computation time and the transfer data back from device to host
+ *
+ * This code measures the total time execution of a matrix multiplication, which
+ * includes the computation time and the transfer data back from device to host
  *
  * Chrome should be run with the flag: --enable-dawn-features=allow_unsafe_apis
  * Make sure all of the chrome windows/tabs are closed so that a new session
  * can start with the specified flags.
- * 
+ *
  */
 
 (async () => {
@@ -144,11 +144,6 @@
     ]
   });
 
-
-  // Commands submission
-  const commandEncoder = device.createCommandEncoder();
-
-
   const capacity = 3;  // The number of timestamps we want to store
 
   // Create a timestamp query set that will store the timestamp values.
@@ -166,6 +161,9 @@
     size: 8 * capacity,
     usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST
   })
+
+  // Commands submission
+  const commandEncoder = device.createCommandEncoder();
 
   // Initial timestamp
   // Not: writeTimeStamp cannot be called during a pass. ( between calls to
@@ -198,12 +196,28 @@
 
   // Submit GPU commands.
   const gpuCommands = commandEncoder.finish();
+
+  // From the CPU perspective, this is a good place to start measuring
+  // GPU time (write before queue.submit call) Anything before here is
+  // GPU work preparation. If we have device.queue.writeBuffer calls,
+  // as they are synchronous, they will not be included in this measurement.
+  const CPU_timestamp = performance.now();
+
   device.queue.submit([gpuCommands]);
 
   // Read results
   await gpuReadBuffer.mapAsync(GPUMapMode.READ);
+
+  // For measure CPU time, any place before here, the measurement is
+  // would be wrong, due to the first `await` that appeared here.
+  // Only after this await, we can be sure that the GPU operations
+  // are done.
+  console.log(`CPU measure performance after pass coder end: ${
+      performance.now() - CPU_timestamp}`);
+
   const arrayBuffer = gpuReadBuffer.getMappedRange();
   console.log(new Float32Array(arrayBuffer));
+
 
   // === After `commandEncoder.finish()` is called ===
   // Read the storage query buffer
@@ -222,7 +236,7 @@
   // Freeing buffers
   gpuReadBuffer.unmap();
   queryReadBuffer.unmap();
-  
+
   queryBuffer.destroy();
   queryReadBuffer.destroy();
 
