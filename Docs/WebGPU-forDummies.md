@@ -33,6 +33,9 @@ Now, let's dive into the fascinating (and frustrating!) world of WebGPU compute!
     - [Debug Group Usage](#debug-group-usage)
   - [Advanced Topics](#advanced-topics)
   - [References](#references)
+    - [Repos and examples](#repos-and-examples)
+    - [Debuggers and Profilers](#debuggers-and-profilers)
+    - [Other resources](#other-resources)
 
 ## Introduction to WebGPU Compute
 
@@ -563,7 +566,7 @@ Ordered to be neat!
 - WebGPU [spec](https://gpuweb.github.io/gpuweb/)
 - Andi's [weblog](https://cohost.org/mcc/post/1406157-i-want-to-talk-about-webgpu)
 
-Repos and examples:
+### Repos and examples
 
 - [WebGPT model](https://github.com/0hq/WebGPT/)
 - [Native WebGPU](https://github.com/gfx-rs/wgpu-native)
@@ -578,7 +581,15 @@ Repos and examples:
 - [An example on YouTube](https://youtu.be/7fiCsG6IILs)
 - [Debugging WebGPU Apps](https://github.com/gfx-rs/wgpu/wiki/Debugging-wgpu-Applications)
 
-Other resources:
+### Debuggers and Profilers
+
+- [webgpu-devtools](https://github.com/takahirox/webgpu-devtools) - Web browser extention
+- [webgpu-recorder](https://github.com/brendan-duncan/webgpu_recorder) - A WebGPU playback recorder
+- [webgpu-profiler](https://crates.io/crates/wgpu-profiler) - A profiler for Rust + WebGPU
+- [webgpu-debugger](https://github.com/webgpu/webgpu-debugger) - early stage debugger
+- [thimbleberry](https://github.com/mighdoll/thimbleberry) - WebGPU utilities
+
+### Other resources
 
 - [GPU Accelerated JS](https://github.com/gpujs/gpu.js)
 - [Khronos WebCL](https://www.khronos.org/webcl/)
