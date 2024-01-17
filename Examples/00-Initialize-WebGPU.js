@@ -11,6 +11,10 @@
  *
  * Or this: `DISPLAY=:0 google-chrome-unstable
  * --enable-unsafe-webgpu --enable-features=Vulkan &`
+ *
+ * An example to run headless chrome using the flags:
+ * google-chrome-stable --no-sandbox --headless=new --use-angle=vulkan --enable-features=Vulkan --disable-vulkan-surface --enable-unsafe-webgpu --no-first-run --no-default-browser-check --disable-features=Translate --ash-no-nudges --disable-search-engine-choice-screen --virtual-time-budget=300000 --window-size=1280,720 --print-to-pdf=/content/gpu.pdf https://webgpureport.org
+ *
  */
 
 let gpuDevice = null;
