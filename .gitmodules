@@ -2,3 +2,4 @@
 	path = dawn
 	url = https://dawn.googlesource.com/dawn
 	branch = chromium/6478
+	shallow = true

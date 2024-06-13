@@ -1,6 +1,8 @@
 # Dependency directory
 node_modules
 modules/
+build/
+build-web/
 ts-node--*/
 rss.xml
 
