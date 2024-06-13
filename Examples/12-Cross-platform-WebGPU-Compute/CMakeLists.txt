@@ -1,0 +1,17 @@
+cmake_minimum_required(VERSION 3.13) 
+project(matmult)                         
+set(CMAKE_CXX_STANDARD 20)           
+
+add_executable(matmult "matmult.cpp")
+
+if(EMSCRIPTEN)
+  set_target_properties(matmult PROPERTIES SUFFIX ".html")
+  target_link_options(matmult PRIVATE "-sUSE_WEBGPU=1")
+  target_link_options(matmult PRIVATE "-sASSERTIONS=1")
+  target_link_options(matmult PRIVATE "-sALLOW_MEMORY_GROWTH=1")
+  target_link_options(matmult PRIVATE "-sDISABLE_EXCEPTION_CATCHING=0")
+else()
+  set(DAWN_FETCH_DEPENDENCIES ON)
+  add_subdirectory("../../dawn" "build" EXCLUDE_FROM_ALL)
+  target_link_libraries(matmult PRIVATE webgpu_cpp webgpu_dawn glfw webgpu_glfw)
+endif()
