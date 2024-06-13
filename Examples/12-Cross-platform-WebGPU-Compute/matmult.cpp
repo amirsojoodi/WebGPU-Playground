@@ -1,9 +1,23 @@
 #include <cmath>
 #include <cstring>
+#include <emscripten.h>
 #include <iostream>
 #include <vector>
 #include <webgpu/webgpu.h>
 #include <webgpu/webgpu_cpp.h>
+
+// Uncomment this flag, or compile with -DDEBUG to enable logging
+#define DEBUG 1
+
+#define LOG_MSG(msg) __log_msg(msg)
+
+inline void __log_msg(const char* msg) {
+#ifdef DEBUG
+  EM_ASM({ console.log(msg)}); 
+#else
+  // Do nothing!
+#endif 
+}
 
 wgpu::Instance instance;
 wgpu::Adapter adapter;
@@ -25,7 +39,7 @@ void GetAdapter(void (*callback)(wgpu::Adapter)) {
         if (status != WGPURequestAdapterStatus_Success) {
           exit(0);
         }
-        wgpu::Adapter adapter = wgpu::Adapter::Acquire(cAdapter);
+        adapter = wgpu::Adapter::Acquire(cAdapter);
         reinterpret_cast<void (*)(wgpu::Adapter)>(userdata)(adapter);
       },
       reinterpret_cast<void *>(callback));
@@ -88,18 +102,32 @@ void BufferMapCallback(WGPUBufferMapAsyncStatus status, void *userdata) {
   if (status == WGPUBufferMapAsyncStatus_Success) {
     const float *resultData = static_cast<const float *>(
         gpuReadBuffer.GetConstMappedRange(0, resultMatrixSize));
-    for (size_t i = 0; i < resultMatrixSize / sizeof(float); ++i) {
-      std::cout << resultData[i] << " ";
-    }
-    std::cout << std::endl;
+
+    // std::vector<float> results(resultData, resultData + (resultMatrixSize /
+    // sizeof(float)));
+
+    EM_ASM_(
+        {
+          console.log("Result Matrix: ");
+          var resultPtr = $0;
+          var size = $1;
+
+          // Create a Float32Array view on the heap
+          var resultArray =
+              new Float32Array(Module.HEAPF32.buffer, resultPtr, size / 4);
+
+          // Log the contents of the array
+          console.log(resultArray);
+        },
+        resultData, resultMatrixSize);
+
+    gpuReadBuffer.Unmap();
   } else {
-    std::cerr << "Failed to map result buffer" << std::endl;
+    LOG_MSG("Failed to map result buffer");
   }
-  gpuReadBuffer.Unmap();
 }
 
-int main() {
-
+void RunMatMult() {
   // First Matrix
   const float firstMatrix[] = {2, 4, 1, 2, 3, 4, 5, 6, 7, 8};
   size_t firstMatrixSize = sizeof(firstMatrix);
@@ -113,6 +141,22 @@ int main() {
   std::memcpy(gpuBufferFirstMatrix.GetMappedRange(), firstMatrix,
               firstMatrixSize);
   gpuBufferFirstMatrix.Unmap();
+
+  EM_ASM({ console.log("Initialized the first matrix"); });
+  EM_ASM_(
+      {
+        console.log("First Matrix: ");
+        var resultPtr = $0;
+        var size = $1;
+
+        // Create a Float32Array view on the heap
+        var resultArray =
+            new Float32Array(Module.HEAPF32.buffer, resultPtr, size / 4);
+
+        // Log the contents of the array
+        console.log(resultArray);
+      },
+      firstMatrix, firstMatrixSize);
 
   // Second Matrix
   const float secondMatrix[] = {4, 2, 1, 2, 3, 4, 5, 6, 7, 8};
@@ -128,8 +172,24 @@ int main() {
               secondMatrixSize);
   gpuBufferSecondMatrix.Unmap();
 
+  EM_ASM({ console.log("Initialized the second matrix"); });
+  EM_ASM_(
+      {
+        console.log("First Matrix: ");
+        var resultPtr = $0;
+        var size = $1;
+
+        // Create a Float32Array view on the heap
+        var resultArray =
+            new Float32Array(Module.HEAPF32.buffer, resultPtr, size / 4);
+
+        // Log the contents of the array
+        console.log(resultArray);
+      },
+      secondMatrix, secondMatrixSize);
+
   // Result Matrix
-  size_t resultMatrixSize =
+  resultMatrixSize =
       sizeof(float) * (2 + static_cast<size_t>(firstMatrix[0]) *
                                static_cast<size_t>(secondMatrix[1]));
 
@@ -183,7 +243,7 @@ int main() {
   passEncoder.End();
 
   // Get a GPU buffer for reading in an unmapped state
-  wgpu::Buffer gpuReadBuffer = device.CreateBuffer(new wgpu::BufferDescriptor{
+  gpuReadBuffer = device.CreateBuffer(new wgpu::BufferDescriptor{
       .usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::MapRead,
       .size = resultMatrixSize,
   });
@@ -196,12 +256,24 @@ int main() {
   wgpu::CommandBuffer commands = commandEncoder.Finish();
   device.GetQueue().Submit(1, &commands);
 
+  EM_ASM({ console.log("Commands submitted to the GPU Queue"); });
+
   // Read buffer
   gpuReadBuffer.MapAsync(wgpu::MapMode::Read, (size_t)0, resultMatrixSize,
                          BufferMapCallback, NULL);
+}
 
-  // Unmap buffer to free it
-  gpuReadBuffer.Unmap();
+int main() {
+
+  instance = wgpu::CreateInstance();
+
+  GetAdapter([](wgpu::Adapter adapter) {
+    EM_ASM({ console.log("GPU Adapter acquired."); });
+    GetDevice([](wgpu::Device device) {
+      EM_ASM({ console.log("GPU Device acquired."); });
+      RunMatMult();
+    });
+  });
 
   return 0;
 }
