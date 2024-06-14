@@ -1,6 +1,6 @@
-# Cross Platform WebGPU sample
+# Cross Platform WebGPU sample - Compute API
 
-This example is from [here](https://developer.chrome.com/docs/web-platform/webgpu/build-app).
+Similar to the previous example but on Compute API.
 
 ## Emscripten
 
