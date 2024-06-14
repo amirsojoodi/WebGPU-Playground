@@ -11,12 +11,12 @@
 
 #define LOG_MSG(msg) __log_msg(msg)
 
-inline void __log_msg(const char* msg) {
+inline void __log_msg(const char *msg) {
 #ifdef DEBUG
-  EM_ASM({ console.log(msg)}); 
+  EM_ASM({console.log(msg)});
 #else
   // Do nothing!
-#endif 
+#endif
 }
 
 wgpu::Instance instance;
