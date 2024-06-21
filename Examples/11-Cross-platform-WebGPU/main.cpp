@@ -3,6 +3,7 @@
 #include <iostream>
 #if defined(__EMSCRIPTEN__)
 #include <emscripten/emscripten.h>
+#include <emscripten/html5.h>
 #else
 #include <webgpu/webgpu_glfw.h>
 #endif
@@ -49,8 +50,13 @@ void GetAdapter(void (*callback)(wgpu::Adapter)) {
 }
 
 void GetDevice(void (*callback)(wgpu::Device)) {
+  wgpu::DeviceDescriptor deviceDescriptor{};
+  wgpu::FeatureName requiredFeatures[] = {wgpu::FeatureName::BGRA8UnormStorage};
+  deviceDescriptor.requiredFeatures = requiredFeatures;
+  deviceDescriptor.requiredFeatureCount = 1;
+
   adapter.RequestDevice(
-      nullptr,
+      &deviceDescriptor,
       // TODO(https://bugs.chromium.org/p/dawn/issues/detail?id=1892): Use
       // wgpu::RequestDeviceStatus and wgpu::Device.
       [](WGPURequestDeviceStatus status, WGPUDevice cDevice,
