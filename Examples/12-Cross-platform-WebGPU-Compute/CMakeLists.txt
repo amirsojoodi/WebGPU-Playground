@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.13) 
-project(matmult)                         
+project(matmult
+  LANGUAGES C CXX
+)                         
 set(CMAKE_CXX_STANDARD 20)           
 
 add_executable(matmult "matmult.cpp")
@@ -29,5 +31,5 @@ if(EMSCRIPTEN)
 else()
   set(DAWN_FETCH_DEPENDENCIES ON)
   add_subdirectory("../../dawn" "build" EXCLUDE_FROM_ALL)
-  target_link_libraries(matmult PRIVATE webgpu_cpp webgpu_dawn glfw webgpu_glfw)
+  target_link_libraries(matmult PRIVATE webgpu_cpp webgpu_dawn)
 endif()

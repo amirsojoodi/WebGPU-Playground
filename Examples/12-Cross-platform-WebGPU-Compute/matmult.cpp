@@ -1,23 +1,12 @@
-#include <cmath>
 #include <cstring>
-#include <emscripten.h>
 #include <iostream>
+#include <iterator>
 #include <vector>
-#include <webgpu/webgpu.h>
 #include <webgpu/webgpu_cpp.h>
 
-// Uncomment this flag, or compile with -DDEBUG to enable logging
-#define DEBUG 1
-
-#define LOG_MSG(msg) __log_msg(msg)
-
-inline void __log_msg(const char *msg) {
-#ifdef DEBUG
-  EM_ASM({console.log(msg)});
-#else
-  // Do nothing!
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
 #endif
-}
 
 wgpu::Instance instance;
 wgpu::Adapter adapter;
@@ -26,34 +15,39 @@ wgpu::Device device;
 wgpu::Buffer gpuReadBuffer;
 size_t resultMatrixSize;
 
-void GetAdapter(void (*callback)(wgpu::Adapter)) {
+// GetAdapter gets a callback function that it's get called
+// after the RequestAdapter resolves.
+void GetAdapter(void (*callback)()) {
   instance.RequestAdapter(
       nullptr,
-      // TODO(https://bugs.chromium.org/p/dawn/issues/detail?id=1892): Use
-      // wgpu::RequestAdapterStatus and wgpu::Adapter.
       [](WGPURequestAdapterStatus status, WGPUAdapter cAdapter,
          const char *message, void *userdata) {
         if (message) {
-          printf("RequestAdapter: %s\n", message);
+          std::cout << "RequestAdapter message: " << message << std::endl;
         }
         if (status != WGPURequestAdapterStatus_Success) {
+          std::cout << "AdapterRequest was not successfull" << std::endl;
           exit(0);
         }
         adapter = wgpu::Adapter::Acquire(cAdapter);
-        reinterpret_cast<void (*)(wgpu::Adapter)>(userdata)(adapter);
+        // (2) Cast userdata back to the callback and then call it
+        reinterpret_cast<void (*)()>(userdata)();
       },
+      // (1) Cast the call back to void pointer and pass it in
       reinterpret_cast<void *>(callback));
 }
 
-void GetDevice(void (*callback)(wgpu::Device)) {
+void GetDevice(void (*callback)()) {
   adapter.RequestDevice(
       nullptr,
-      // TODO(https://bugs.chromium.org/p/dawn/issues/detail?id=1892): Use
-      // wgpu::RequestDeviceStatus and wgpu::Device.
       [](WGPURequestDeviceStatus status, WGPUDevice cDevice,
          const char *message, void *userdata) {
         if (message) {
-          printf("RequestDevice: %s\n", message);
+          std::cout << "RequestDevice message: " << message << std::endl;
+        }
+        if (status != WGPURequestDeviceStatus_Success) {
+          std::cout << "AdapterRequest was not successfull" << std::endl;
+          exit(0);
         }
         device = wgpu::Device::Acquire(cDevice);
         device.SetUncapturedErrorCallback(
@@ -61,8 +55,10 @@ void GetDevice(void (*callback)(wgpu::Device)) {
               std::cout << "Error: " << type << " - message: " << message;
             },
             nullptr);
-        reinterpret_cast<void (*)(wgpu::Device)>(userdata)(device);
+        // (2) Cast userdata back to the callback and then call it
+        reinterpret_cast<void (*)()>(userdata)();
       },
+      // (1) Cast the call back to void pointer and pass it in
       reinterpret_cast<void *>(callback));
 }
 
@@ -99,38 +95,30 @@ const char shaderCode[] = R"(
 )";
 
 void BufferMapCallback(WGPUBufferMapAsyncStatus status, void *userdata) {
+
+  std::cout << "In Buffer async call back, status: " << status << std::endl;
+
   if (status == WGPUBufferMapAsyncStatus_Success) {
     const float *resultData = static_cast<const float *>(
         gpuReadBuffer.GetConstMappedRange(0, resultMatrixSize));
 
-    // std::vector<float> results(resultData, resultData + (resultMatrixSize /
-    // sizeof(float)));
-
-    EM_ASM_(
-        {
-          console.log("Result Matrix: ");
-          var resultPtr = $0;
-          var size = $1;
-
-          // Create a Float32Array view on the heap
-          var resultArray =
-              new Float32Array(Module.HEAPF32.buffer, resultPtr, size / 4);
-
-          // Log the contents of the array
-          console.log(resultArray);
-        },
-        resultData, resultMatrixSize);
+    std::cout << "Result Matrix: " << std::endl;
+    for (int i = 0; i < resultMatrixSize / sizeof(float); i++) {
+      std::cout << resultData[i] << " ";
+    }
+    std::cout << std::endl;
 
     gpuReadBuffer.Unmap();
   } else {
-    LOG_MSG("Failed to map result buffer");
+    std::cout << "Failed to map result buffer" << std::endl;
   }
+  *reinterpret_cast<bool *>(userdata) = true;
 }
 
 void RunMatMult() {
   // First Matrix
-  const float firstMatrix[] = {2, 4, 1, 2, 3, 4, 5, 6, 7, 8};
-  size_t firstMatrixSize = sizeof(firstMatrix);
+  const std::vector<float> firstMatrix = {2, 4, 1, 2, 3, 4, 5, 6, 7, 8};
+  size_t firstMatrixSize = firstMatrix.size() * sizeof(float);
 
   wgpu::Buffer gpuBufferFirstMatrix =
       device.CreateBuffer(new wgpu::BufferDescriptor{
@@ -138,29 +126,18 @@ void RunMatMult() {
           .size = firstMatrixSize,
           .mappedAtCreation = true,
       });
-  std::memcpy(gpuBufferFirstMatrix.GetMappedRange(), firstMatrix,
+  std::memcpy(gpuBufferFirstMatrix.GetMappedRange(), firstMatrix.data(),
               firstMatrixSize);
   gpuBufferFirstMatrix.Unmap();
 
-  EM_ASM({ console.log("Initialized the first matrix"); });
-  EM_ASM_(
-      {
-        console.log("First Matrix: ");
-        var resultPtr = $0;
-        var size = $1;
-
-        // Create a Float32Array view on the heap
-        var resultArray =
-            new Float32Array(Module.HEAPF32.buffer, resultPtr, size / 4);
-
-        // Log the contents of the array
-        console.log(resultArray);
-      },
-      firstMatrix, firstMatrixSize);
+  std::cout << "First Matrix: " << std::endl;
+  std::copy(firstMatrix.begin(), firstMatrix.end(),
+            std::ostream_iterator<float>(std::cout, " "));
+  std::cout << std::endl;
 
   // Second Matrix
-  const float secondMatrix[] = {4, 2, 1, 2, 3, 4, 5, 6, 7, 8};
-  size_t secondMatrixSize = sizeof(secondMatrix);
+  const std::vector<float> secondMatrix = {4, 2, 1, 2, 3, 4, 5, 6, 7, 8};
+  size_t secondMatrixSize = secondMatrix.size() * sizeof(float);
 
   wgpu::Buffer gpuBufferSecondMatrix =
       device.CreateBuffer(new wgpu::BufferDescriptor{
@@ -168,25 +145,14 @@ void RunMatMult() {
           .size = secondMatrixSize,
           .mappedAtCreation = true,
       });
-  std::memcpy(gpuBufferSecondMatrix.GetMappedRange(), secondMatrix,
+  std::memcpy(gpuBufferSecondMatrix.GetMappedRange(), secondMatrix.data(),
               secondMatrixSize);
   gpuBufferSecondMatrix.Unmap();
 
-  EM_ASM({ console.log("Initialized the second matrix"); });
-  EM_ASM_(
-      {
-        console.log("First Matrix: ");
-        var resultPtr = $0;
-        var size = $1;
-
-        // Create a Float32Array view on the heap
-        var resultArray =
-            new Float32Array(Module.HEAPF32.buffer, resultPtr, size / 4);
-
-        // Log the contents of the array
-        console.log(resultArray);
-      },
-      secondMatrix, secondMatrixSize);
+  std::cout << "Second Matrix: " << std::endl;
+  std::copy(secondMatrix.begin(), secondMatrix.end(),
+            std::ostream_iterator<float>(std::cout, " "));
+  std::cout << std::endl;
 
   // Result Matrix
   resultMatrixSize =
@@ -256,21 +222,29 @@ void RunMatMult() {
   wgpu::CommandBuffer commands = commandEncoder.Finish();
   device.GetQueue().Submit(1, &commands);
 
-  EM_ASM({ console.log("Commands submitted to the GPU Queue"); });
+  std::cout << "Commands submitted to the GPU Queue" << std::endl;
 
-  // Read buffer
+  // Print output
+  bool done = false;
   gpuReadBuffer.MapAsync(wgpu::MapMode::Read, (size_t)0, resultMatrixSize,
-                         BufferMapCallback, NULL);
+                         BufferMapCallback, reinterpret_cast<void *>(&done));
+
+#ifndef __EMSCRIPTEN__
+  // This check is required for native dawn
+  while (!done) {
+    instance.ProcessEvents();
+  }
+#endif
 }
 
 int main() {
 
   instance = wgpu::CreateInstance();
 
-  GetAdapter([](wgpu::Adapter adapter) {
-    EM_ASM({ console.log("GPU Adapter acquired."); });
-    GetDevice([](wgpu::Device device) {
-      EM_ASM({ console.log("GPU Device acquired."); });
+  GetAdapter([]() {
+    std::cout << "GPU Adapter acquired." << std::endl;
+    GetDevice([]() {
+      std::cout << "GPU Device acquired." << std::endl;
       RunMatMult();
     });
   });
