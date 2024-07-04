@@ -94,11 +94,20 @@ const char shaderCode[] = R"(
     }
 )";
 
+#ifdef __EMSCRIPTEN__
 void BufferMapCallback(WGPUBufferMapAsyncStatus status, void *userdata) {
+#else
+void BufferMapCallback(wgpu::MapAsyncStatus status, char const *message,
+                       void *userdata) {
+#endif
 
-  std::cout << "In Buffer async call back, status: " << status << std::endl;
+  std::cout << "In Buffer async call back" << std::endl;
 
+#ifdef __EMSCRIPTEN__
   if (status == WGPUBufferMapAsyncStatus_Success) {
+#else
+  if (status == wgpu::MapAsyncStatus::Success) {
+#endif
     const float *resultData = static_cast<const float *>(
         gpuReadBuffer.GetConstMappedRange(0, resultMatrixSize));
 
@@ -226,15 +235,19 @@ void RunMatMult() {
 
   // Print output
   bool done = false;
+#ifdef __EMSCRIPTEN__
   gpuReadBuffer.MapAsync(wgpu::MapMode::Read, (size_t)0, resultMatrixSize,
                          BufferMapCallback, reinterpret_cast<void *>(&done));
-
-#ifndef __EMSCRIPTEN__
+#else
+  gpuReadBuffer.MapAsync(wgpu::MapMode::Read, (size_t)0, resultMatrixSize,
+                         wgpu::CallbackMode::AllowProcessEvents,
+                         BufferMapCallback, reinterpret_cast<void *>(&done));
   // This check is required for native dawn
   while (!done) {
     instance.ProcessEvents();
   }
 #endif
+
 }
 
 int main() {
