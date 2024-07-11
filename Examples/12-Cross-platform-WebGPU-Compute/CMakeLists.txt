@@ -23,10 +23,14 @@ if(EMSCRIPTEN)
 
   # Disable WASM module generation. (Everything will be in a JS file)
   target_link_options(matmult PRIVATE "-sWASM=0")
-
+  
+  # Whether to support async operations in the compiled code. This makes it
+  # possible to call JS functions from synchronous-looking code in C/C++.
+  target_link_options(matmult PRIVATE "-sASYNCIFY=1")
+  
   # Enable optimization in code speed and size
   target_link_options(matmult PRIVATE "-O3")
-  
+
   # target_link_options(matmult PRIVATE "-sDISABLE_EXCEPTION_CATCHING=0")
   
   # Whether we will run the main() function. Disable if you embed the generated

@@ -14,6 +14,7 @@ wgpu::Device device;
 
 wgpu::Buffer gpuReadBuffer;
 size_t resultMatrixSize;
+bool work_done = false;
 
 // GetAdapter gets a callback function that it's get called
 // after the RequestAdapter resolves.
@@ -94,20 +95,12 @@ const char shaderCode[] = R"(
     }
 )";
 
-#ifdef __EMSCRIPTEN__
-void BufferMapCallback(WGPUBufferMapAsyncStatus status, void *userdata) {
-#else
-void BufferMapCallback(wgpu::MapAsyncStatus status, char const *message,
-                       void *userdata) {
-#endif
+void BufferMapCallbackFunction(WGPUBufferMapAsyncStatus status,
+                               void *userdata) {
 
-  std::cout << "In Buffer async call back" << std::endl;
+  std::cout << "In Buffer async call back, status: " << status << std::endl;
 
-#ifdef __EMSCRIPTEN__
   if (status == WGPUBufferMapAsyncStatus_Success) {
-#else
-  if (status == wgpu::MapAsyncStatus::Success) {
-#endif
     const float *resultData = static_cast<const float *>(
         gpuReadBuffer.GetConstMappedRange(0, resultMatrixSize));
 
@@ -233,25 +226,13 @@ void RunMatMult() {
 
   std::cout << "Commands submitted to the GPU Queue" << std::endl;
 
-  // Print output
-  bool done = false;
-#ifdef __EMSCRIPTEN__
   gpuReadBuffer.MapAsync(wgpu::MapMode::Read, (size_t)0, resultMatrixSize,
-                         BufferMapCallback, reinterpret_cast<void *>(&done));
-#else
-  gpuReadBuffer.MapAsync(wgpu::MapMode::Read, (size_t)0, resultMatrixSize,
-                         wgpu::CallbackMode::AllowProcessEvents,
-                         BufferMapCallback, reinterpret_cast<void *>(&done));
-  // This check is required for native dawn
-  while (!done) {
-    instance.ProcessEvents();
-  }
-#endif
-
+                         BufferMapCallbackFunction,
+                         reinterpret_cast<void *>(&work_done));
 }
 
-int main() {
-
+extern "C" {
+void RunMatMultWrapper() {
   instance = wgpu::CreateInstance();
 
   GetAdapter([]() {
@@ -262,5 +243,22 @@ int main() {
     });
   });
 
+  // https://eliemichel.github.io/LearnWebGPU/getting-started/the-command-queue.html#device-polling
+#ifndef __EMSCRIPTEN__
+  while (!work_done) {
+    instance.ProcessEvents();
+  }
+#else
+  while (!work_done) {
+    emscripten_sleep(100);
+  }
+#endif
+}
+}
+
+int main() {
+  // I put the call to the RunMatMult function in a wrapper, so that
+  // I can pass arguements if necessary
+  RunMatMultWrapper();
   return 0;
 }
