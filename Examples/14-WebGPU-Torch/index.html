@@ -12,7 +12,7 @@
     <script>
         async function run() {
             await torch.initWebGPUAsync();
-            results = await runBenchmarksAsync(document.getElementById("benchmarks"));
+            results = await runBenchmarksAsync();
             console.log(results);
         }
         run();
