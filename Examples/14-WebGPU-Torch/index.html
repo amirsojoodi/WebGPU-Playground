@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WebGPU-torch Benchmarks</title>
+</head>
+<body>
+    <h1><a href="https://praeclarum.org/webgpu-torch/">WebGPU-torch</a> benchmarks</h1>
+    <div id="benchmarks"></div>
+    <script src="torch.js"></script>
+    <script src="benchmark.js"></script>
+    <script>
+        async function run() {
+            await torch.initWebGPUAsync();
+            results = await runBenchmarksAsync(document.getElementById("benchmarks"));
+            console.log(results);
+        }
+        run();
+    </script>
+    Slightly updated version of the benchmark available at <a href="https://github.com/praeclarum/webgpu-torch/">here</a>.
+    Open Console to see the results!
+</body>
+</html>
